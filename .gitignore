@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+
+# 自检临时文件（tools/check-client.mjs 生成）
+.selfcheck-*.json

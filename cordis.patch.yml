@@ -1,0 +1,5 @@
+# 单一 Loader source。live-entry-34.js：统一标准 OpenAI Images 接口（移除厂商协议分支与 ratio，
+# size 改为像素尺寸）、移除全部旧版兼容，组件模块统一 ?v=34；token-usage 沿用 host.js?v=19。
+- insert:
+    - id: dsh-toolkit
+      name: './live-entry-34.js'
