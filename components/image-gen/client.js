@@ -476,7 +476,7 @@ window.__ModuleLoader__.load({
                 gen.result.images.map((img) => React.createElement('div', { key: img.name, className: 'ag-card' },
                   React.createElement('img', { className: 'ag-thumb', src: srcRecent(img.name), alt: img.name }),
                   React.createElement('div', { className: 'ag-caption' }, img.name)))),
-              React.createElement('div', { className: 'ag-note' }, '已保存到统一目录 ~/image-gen/（环境变量 IMAGE_GEN_DIR 可改；点击左侧「最近生成」查看）'))
+              React.createElement('div', { className: 'ag-note' }, '已保存到插件目录 data/images/（环境变量 IMAGE_GEN_DIR 可改；点击左侧「最近生成」查看）'))
             : null
 
           const catalogEntries = catalog && Array.isArray(catalog.entries) ? catalog.entries : []
