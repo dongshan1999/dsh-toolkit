@@ -1,0 +1,41 @@
+{
+  "name": "dsh-toolkit",
+  "version": "1.3.0",
+  "type": "module",
+  "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）与 Token 用量、成本、活跃度面板。",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "bundle",
+    "plugin",
+    "image-generation",
+    "text-to-image",
+    "token-usage",
+    "cost-tracking"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node tools/check-client.mjs",
+    "test": "node build.mjs && node tools/check-client.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./image-gen": "./components/image-gen/host.js",
+    "./token-usage": "./components/token-usage/host.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "client.js", "build.mjs", "components/", "cordis.patch.yml"],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  }
+}
