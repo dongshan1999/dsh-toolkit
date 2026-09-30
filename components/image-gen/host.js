@@ -12,14 +12,14 @@
  * 模型接入（接口地址 / 模型 id / API Key）全部交给 ./config.js：
  * 面板「设置」Tab 写配置文件，工具与面板读到同一份真相。
  *
- * 图片 URL 约 24 小时过期，因此同时统一下载到 imageDir()（默认 ~/image-gen，
+ * 图片 URL 约 24 小时过期，因此同时统一下载到 imageDir()（默认插件目录 data/images，
  * `IMAGE_GEN_DIR` 可覆盖）并返回本地路径；下载失败不影响返回 URL。
  * 跟会话工作区无关，图片不落进项目目录。
  */
-import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=34'
+import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=35'
 // 共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例拿不到新导出；
 // 改了任何共享底层（config.js / generate.js / library.js）都要同步升这个 ?v。
-import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=34'
+import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=35'
 
 export const name = 'image-gen'
 export const inject = ['tools', 'credentials']
@@ -41,7 +41,7 @@ export function apply(ctx) {
       + '提示词越详细越好（主体、风格、场景、构图、光线）。'
       + `size 为输出像素尺寸，常用 ${SIZES.join('、')}（默认 ${DEFAULT_SIZE}）。`
       + `count 可一次生成多张（1-${MAX_COUNT}）。返回图片 URL（约 24 小时有效）和已保存的本地文件路径。`
-      + '图片统一保存在固定目录（默认 ~/image-gen，环境变量 IMAGE_GEN_DIR 可覆盖），不写入当前项目。'
+      + '图片统一保存在插件目录 data/images/（环境变量 IMAGE_GEN_DIR 可覆盖），不写入当前项目。'
       + '模型与接口地址在「图片生成」面板的设置里配置。',
     parameters: {
       type: 'object',

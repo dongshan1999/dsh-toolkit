@@ -131,13 +131,13 @@ Content-Type: application/json
 
 ### 数据落地
 
-- 生成图统一落盘到 `~/image-gen/`（收藏 `~/image-gen-favorites/`），**不写入项目目录**；
+- 生成图统一落盘到**插件目录** `data/images/`（收藏 `data/favorites/`），**不写入项目目录**；
   `IMAGE_GEN_DIR` 可整体改到别处（支持 `~` 展开）。
 - 生成逐张串行（接口对并发不友好），单张失败不影响其余；落盘失败静默跳过，仍然返回图片 URL。
 
 ### 提示词库
 
-- 库文件：`~/.dsh/image-gen-library.json`（`IMAGE_GEN_LIBRARY` 可改）。
+- 库文件：插件目录 `data/library.json`（`IMAGE_GEN_LIBRARY` 可改）。
 - 每条记录：`{ id, title, text, size, images: [图片名…], createdAt, updatedAt }`；
   `title` 缺省取正文前 24 字符。
 
@@ -188,9 +188,9 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 
 | 环境变量 | 作用 | 默认值 |
 | --- | --- | --- |
-| `IMAGE_GEN_DIR` | 生成图统一落盘目录（收藏固定在同级） | `~/image-gen` |
-| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `~/.dsh/image-gen.json` |
-| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `~/.dsh/image-gen-library.json` |
+| `IMAGE_GEN_DIR` | 生成图统一落盘目录（收藏固定在同级） | `<插件根>/data/images` |
+| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `<插件根>/data/config.json` |
+| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `<插件根>/data/library.json` |
 | `CUSTOM_API_KEY` | 默认密钥来源（每条模型也可用自己的 `keyEnv`） | — |
 | `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `~/.dsh/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev 同步源（自检用） | `https://models.dev/api.json` |
@@ -200,10 +200,10 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 
 | 路径 | 内容 |
 | --- | --- |
-| `~/image-gen/` | 生成图统一目录（文件名形如 `image-gen-<UTC 时间戳>-<序号>.png`） |
-| `~/image-gen-favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里） |
-| `~/.dsh/image-gen.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
-| `~/.dsh/image-gen-library.json` | 提示词库，权限 0600 |
+| `<插件根>/data/images/` | 生成图统一目录（文件名形如 `image-gen-<UTC 时间戳>-<序号>.png`） |
+| `<插件根>/data/favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里） |
+| `<插件根>/data/config.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
+| `<插件根>/data/library.json` | 提示词库，权限 0600 |
 | `~/.dsh/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
 | `<系统临时目录>/dsh-token-usage-host.log` | token-usage 诊断日志（仅 `TOKEN_USAGE_DIAG=1` 时生成） |
 

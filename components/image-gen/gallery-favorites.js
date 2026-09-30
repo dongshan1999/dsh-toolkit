@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { favoritesDir, scanFavoriteDirs, scanImageDirs } from './generate.js?v=34'
+import { favoritesDir, scanFavoriteDirs, scanImageDirs } from './generate.js?v=35'
 
 export const name = 'image-gen-favorites'
 export const inject = ['connection', 'sessions']

@@ -137,14 +137,14 @@ subject → style (stackable) → 构图与视角: … → 光线与氛围: … 
 
 ### Files and storage
 
-- Generated images go to `~/image-gen/` (favorites to `~/image-gen-favorites/`) — **never into a project
-  directory**. `IMAGE_GEN_DIR` relocates them (a leading `~` is expanded).
+- Generated images go to the **plugin directory**, `data/images/` (favorites to `data/favorites/`) —
+  **never into a project directory**. `IMAGE_GEN_DIR` relocates them (a leading `~` is expanded).
 - Generation is serial (the APIs dislike concurrency); one failure does not abort the rest, and a failed
   disk write is skipped while the image URL is still returned.
 
 ### Prompt library
 
-- File: `~/.dsh/image-gen-library.json` (`IMAGE_GEN_LIBRARY` overrides it).
+- File: plugin directory `data/library.json` (`IMAGE_GEN_LIBRARY` overrides it).
 - Each record: `{ id, title, text, size, images: [names…], createdAt, updatedAt }`;
   `title` defaults to the first 24 characters.
 
@@ -201,9 +201,9 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `IMAGE_GEN_DIR` | Unified output directory (favorites live in the sibling dir) | `~/image-gen` |
-| `IMAGE_GEN_CONFIG` | Model catalog config file | `~/.dsh/image-gen.json` |
-| `IMAGE_GEN_LIBRARY` | Prompt library file | `~/.dsh/image-gen-library.json` |
+| `IMAGE_GEN_DIR` | Unified output directory (favorites live in the sibling dir) | `<plugin>/data/images` |
+| `IMAGE_GEN_CONFIG` | Model catalog config file | `<plugin>/data/config.json` |
+| `IMAGE_GEN_LIBRARY` | Prompt library file | `<plugin>/data/library.json` |
 | `CUSTOM_API_KEY` | Default key source (an entry may define its own `keyEnv`) | — |
 | `TOKEN_USAGE_PRICING` | Price file for token-usage | `~/.dsh/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev sync source (used by self-checks) | `https://models.dev/api.json` |
@@ -213,10 +213,10 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 
 | Path | Contents |
 | --- | --- |
-| `~/image-gen/` | Unified output directory (`image-gen-<UTC stamp>-<index>.png`) |
-| `~/image-gen-favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here) |
-| `~/.dsh/image-gen.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
-| `~/.dsh/image-gen-library.json` | Prompt library, mode 0600 |
+| `<plugin>/data/images/` | Unified output directory (`image-gen-<UTC stamp>-<index>.png`) |
+| `<plugin>/data/favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here) |
+| `<plugin>/data/config.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
+| `<plugin>/data/library.json` | Prompt library, mode 0600 |
 | `~/.dsh/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
 | `<system temp>/dsh-token-usage-host.log` | token-usage diagnostics (only when `TOKEN_USAGE_DIAG=1`) |
 

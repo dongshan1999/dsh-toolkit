@@ -6,11 +6,13 @@
  * 请求体为 `{ model, prompt, n, size, image? }`，`size` 为像素尺寸
  * （`1024x1024` 等 OpenAI 规范取值）。不走 chat/completions，也没有任何厂商私有协议。
  *
- * 落盘统一在 imageDir()（默认 ~/image-gen，`IMAGE_GEN_DIR` 可覆盖），不写入项目目录。
+ * 落盘统一在 imageDir()（默认插件目录 data/images，`IMAGE_GEN_DIR` 可覆盖），不写入项目目录。
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, extname, isAbsolute, join } from 'node:path'
+
+import { FAVORITES_DIR_NAME, IMAGES_DIR } from './paths.js?v=35'
 
 /** OpenAI Images API 的标准尺寸（兼容网关普遍接受这组取值）。 */
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -19,8 +21,6 @@ export const MAX_REFERENCES = 9
 export const MAX_COUNT = 4
 
 const IMAGE_DIR_ENV = 'IMAGE_GEN_DIR'
-const DIR_NAME = 'image-gen'
-const FAVORITES_DIR_NAME = 'image-gen-favorites'
 const FILE_PREFIX = 'image-gen'
 
 const MIME_BY_EXT = {
@@ -48,9 +48,9 @@ function dirOverride(value) {
   return isAbsolute(text) ? text : null
 }
 
-/** 生成图统一落盘目录：`IMAGE_GEN_DIR` 优先，默认 ~/image-gen。 */
+/** 生成图统一落盘目录：`IMAGE_GEN_DIR` 优先，默认插件目录 data/images。 */
 export function imageDir() {
-  return dirOverride(process.env[IMAGE_DIR_ENV]) ?? join(homedir(), DIR_NAME)
+  return dirOverride(process.env[IMAGE_DIR_ENV]) ?? IMAGES_DIR
 }
 
 /** 收藏目录：固定与 imageDir() 同级。 */

@@ -4,14 +4,14 @@
  * 结构：`{ prompts: [ { id, title, text, size, images: [name…], createdAt, updatedAt } ] }`
  * `images` 记录该条提示词生成过的图片名（落在统一目录，按名可直接读）。
  *
- * 库文件路径：`IMAGE_GEN_LIBRARY` → `~/.dsh/image-gen-library.json`。
+ * 库文件路径：`IMAGE_GEN_LIBRARY` → 插件目录 data/library.json。
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
+
+import { LIBRARY_FILE } from './paths.js?v=35'
 
 const LIB_ENV = 'IMAGE_GEN_LIBRARY'
-const LIB_FILE = join('.dsh', 'image-gen-library.json')
 
 /** 与 generate.js 保持一致的像素尺寸集合。 */
 const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -23,11 +23,11 @@ function cleanText(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 }
 
-/** 库文件路径：`IMAGE_GEN_LIBRARY` 优先，默认 `~/.dsh/image-gen-library.json`。 */
+/** 库文件路径：`IMAGE_GEN_LIBRARY` 优先，默认插件目录 data/library.json。 */
 export function libraryPath() {
   const override = cleanText(process.env[LIB_ENV])
   if (override !== null) return override
-  return join(homedir(), LIB_FILE)
+  return LIBRARY_FILE
 }
 
 function empty() {

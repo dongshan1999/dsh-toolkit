@@ -4,3 +4,6 @@ node_modules/
 
 # 自检临时文件（tools/check-client.mjs 生成）
 .selfcheck-*.json
+
+# 插件运行时数据：生成图 / 收藏 / 模型配置（含密钥）/ 提示词库
+/data/

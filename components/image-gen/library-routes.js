@@ -10,8 +10,8 @@
  * 每次写都直接回传全量 library，客户端拿一份全量渲染。
  * 库文件路径与结构见 ./library.js。
  */
-// ?v=34：共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例。
-import { libraryPath, readLibrary, remove, tagImages, upsert, writeLibrary } from './library.js?v=34'
+// ?v=35：共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例。
+import { libraryPath, readLibrary, remove, tagImages, upsert, writeLibrary } from './library.js?v=35'
 
 export const name = 'image-gen-library'
 export const inject = ['connection']

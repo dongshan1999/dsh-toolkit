@@ -7,7 +7,7 @@
  *
  * 写入目标见 ./config.js（本机配置文件 + 凭据库）。
  */
-import { addModel, configView, removeModel, resolveConfig, resolveModelById, saveApiKey, setDefaultModel } from './config.js?v=34'
+import { addModel, configView, removeModel, resolveConfig, resolveModelById, saveApiKey, setDefaultModel } from './config.js?v=35'
 
 export const name = 'image-gen-settings'
 export const inject = ['settings', 'credentials', 'connection']

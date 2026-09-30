@@ -19,7 +19,7 @@
 
 - **文生图**：`prompt` 必填 + `size`（像素尺寸，默认 `1024x1024`）+ `count`（1-4）
 - **图生图 / 编辑**：`image` 数组（本地路径、https URL 或 data URL，≤9 张），prompt 里描述改动要求
-- 返回图片 URL（约 24 小时有效）+ 落盘本地路径（默认 `~/image-gen`）
+- 返回图片 URL（约 24 小时有效）+ 落盘本地路径（默认插件目录 `data/images/`）
 - 目录为空、或默认模型没有可用密钥时**快速失败**并给出可操作提示，不触网
 
 ### 侧边栏面板（order 49）
@@ -31,7 +31,7 @@
 
 ### 提示词库
 
-- 库文件：`IMAGE_GEN_LIBRARY` → `~/.dsh/image-gen-library.json`
+- 库文件：`IMAGE_GEN_LIBRARY` → 插件目录 `data/library.json`
 - 每条记录：`{ id, title, text, size, images: [图片名…], createdAt, updatedAt }`
 - `images` 记录该条生成过的图片名，按名从统一目录回显；「加为风格」「替换主体」直接填入右栏表单
 
@@ -39,6 +39,7 @@
 
 | 文件 | 作用 |
 | --- | --- |
+| `paths.js` | 统一数据目录：插件 `data/` 下 images / favorites / config.json / library.json（纯常量） |
 | `config.js` | 模型目录读写 + 密钥解析与来源标注（纯 helper，无路由） |
 | `generate.js` | 生成链路：generateOnce / saveImage / generateMany / resolveReferenceImage（纯 helper） |
 | `library.js` | 提示词库读写 / 增删改 / 图片归档（纯 helper，无路由） |
@@ -60,10 +61,10 @@
 
 | 用途 | 环境变量 | 默认路径 |
 | --- | --- | --- |
-| 模型目录 | `IMAGE_GEN_CONFIG` | `~/.dsh/image-gen.json` |
-| 生成图目录 | `IMAGE_GEN_DIR` | `~/image-gen` |
-| 收藏目录 | 随生成图目录 | `~/image-gen-favorites` |
-| 提示词库 | `IMAGE_GEN_LIBRARY` | `~/.dsh/image-gen-library.json` |
+| 生成图目录 | `IMAGE_GEN_DIR` | `<插件根>/data/images` |
+| 收藏目录 | 随生成图目录 | `<插件根>/data/favorites` |
+| 模型目录 | `IMAGE_GEN_CONFIG` | `<插件根>/data/config.json` |
+| 提示词库 | `IMAGE_GEN_LIBRARY` | `<插件根>/data/library.json` |
 
 - **密钥解析顺序**：该条目的 `keyEnv`（默认 `CUSTOM_API_KEY`）→ 配置文件 `keys[keyEnv]` →
   DSH 凭据库 → 环境变量 `$keyEnv`。保存时优先写凭据库，凭据服务不可写才回落配置文件。
