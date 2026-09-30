@@ -2,7 +2,7 @@
 //
 // 浏览器侧一个包只有一个 client 产物，因此各组件的 client.js（原样保留的
 // 组件源码，window.__ModuleLoader__.load 包裹）由本脚本机械变换为独立工厂
-// 函数（各自作用域，互不污染），拼进统一的 @local/dsh-toolkit 入口。
+// 函数（各自作用域，互不污染），拼进统一的 dsh-toolkit 入口。
 //
 // 用法：改了任何 components/*/client.js 之后，在本目录执行
 //   node build.mjs        （或 npm run build）
@@ -13,7 +13,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
-const PACKAGE_ID = '@local/dsh-toolkit'
+const PACKAGE_ID = 'dsh-toolkit'
 
 const componentIds = readdirSync(join(root, 'components'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory())

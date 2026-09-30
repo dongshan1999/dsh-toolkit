@@ -1,5 +1,5 @@
 // ⚠️ 本文件由 build.mjs 生成 —— 不要直接手改；改 components/<id>/client.js 后重新 node build.mjs
-// @local/dsh-toolkit — Client 入口：各组件面板合并到一个浏览器模块，作用域互相独立。
+// dsh-toolkit — Client 入口：各组件面板合并到一个浏览器模块，作用域互相独立。
 
 // ─── 组件：image-gen ───
 function imageGenClientFactory(require) {
@@ -1704,7 +1704,7 @@ function Panel() { const [state, setState] = React.useState({ loading: true, dat
 }
 
 window.__ModuleLoader__.load({
-  id: '@local/dsh-toolkit',
+  id: 'dsh-toolkit',
   factory(require) {
     const components = [imageGenClientFactory, tokenUsageClientFactory]
     const plugins = components.map((component) => component(require))
