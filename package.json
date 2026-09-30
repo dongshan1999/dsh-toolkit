@@ -4,6 +4,14 @@
   "type": "module",
   "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）与 Token 用量、成本、活跃度面板。",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dongshan1999/dsh-toolkit.git"
+  },
+  "homepage": "https://github.com/dongshan1999/dsh-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/dongshan1999/dsh-toolkit/issues"
+  },
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -26,9 +34,17 @@
     "./client": "./client.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "client.js", "build.mjs", "components/", "cordis.patch.yml"],
+  "files": [
+    "index.js",
+    "client.js",
+    "build.mjs",
+    "components/",
+    "cordis.patch.yml"
+  ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,
