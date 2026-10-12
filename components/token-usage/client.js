@@ -75,6 +75,7 @@ return {
       const [busy, setBusy] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
       const [rateDraft, setRateDraft] = React.useState('')
+      const [usedOnly, setUsedOnly] = React.useState(true)
       React.useEffect(() => {
         let alive = true
         const load = () => host.call('token-usage-pricing', {}).then((next) => {
@@ -109,17 +110,28 @@ return {
         ? '来源：内置 ' + fmtInt(pricing.builtin) + ' 条 + 自定义/同步 ' + fmtInt(pricing.overrides) + ' 条'
         : '来源：' + (pricing.sourceLabel || '内置价目')
       const errorText = pricing.error ? '（价目文件读取失败：' + pricing.error + '）' : ''
+      const usedOnlyAvailable = Array.isArray(pricing.used) && pricing.used.length > 0
+      const usedSet = new Set((pricing.used || []).map((name) => String(name).toLowerCase()))
+      const allEntries = pricing.entries || []
+      const visibleEntries = usedOnly && usedOnlyAvailable
+        ? allEntries.filter((item) => usedSet.has(String(item.modelId).toLowerCase()))
+        : allEntries
       const labels = ['模型', '输入', '输出', '缓存命中', '缓存创建', '操作']
-      const body = (pricing.entries || []).map((item) => React.createElement('tr', { key: item.modelId },
-        React.createElement('td', null, item.displayName || item.modelId),
-        React.createElement('td', null, fmtUnitPrice(item.input)),
-        React.createElement('td', null, fmtUnitPrice(item.output)),
-        React.createElement('td', null, fmtUnitPrice(item.cacheRead)),
-        React.createElement('td', null, fmtUnitPrice(item.cacheWrite)),
+      const body = visibleEntries.map((item) => {
+        const perImage = Number(item.perImage) > 0
+        return React.createElement('tr', { key: item.modelId },
+        React.createElement('td', null, (item.displayName || item.modelId) + (perImage ? ' · $' + item.perImage + '/张' : '')),
+        React.createElement('td', null, perImage ? '—' : fmtUnitPrice(item.input)),
+        React.createElement('td', null, perImage ? '—' : fmtUnitPrice(item.output)),
+        React.createElement('td', null, perImage ? '—' : fmtUnitPrice(item.cacheRead)),
+        React.createElement('td', null, perImage ? '—' : fmtUnitPrice(item.cacheWrite)),
         React.createElement('td', null,
-          React.createElement('span', { className: 'tk-toolbar' },
-            React.createElement('button', { className: 'tk-btn tk-mini-btn', disabled: busy, onClick: () => setForm({ modelId: item.modelId, displayName: item.displayName || item.modelId, input: String(item.input ?? 0), output: String(item.output ?? 0), cacheRead: String(item.cacheRead ?? 0), cacheWrite: String(item.cacheWrite ?? 0) }) }, '改'),
-            React.createElement('button', { className: 'tk-btn tk-mini-btn', disabled: busy, onClick: () => post({ action: 'delete', modelId: item.modelId }) }, '删')))))
+          perImage
+            ? React.createElement('span', { className: 'tk-price-syncmeta' }, '图片生成面板 · 编辑模型里配置')
+            : React.createElement('span', { className: 'tk-toolbar' },
+              React.createElement('button', { className: 'tk-btn tk-mini-btn', disabled: busy, onClick: () => setForm({ modelId: item.modelId, displayName: item.displayName || item.modelId, input: String(item.input ?? 0), output: String(item.output ?? 0), cacheRead: String(item.cacheRead ?? 0), cacheWrite: String(item.cacheWrite ?? 0) }) }, '改'),
+              React.createElement('button', { className: 'tk-btn tk-mini-btn', disabled: busy, onClick: () => post({ action: 'delete', modelId: item.modelId }) }, '删'))))
+      })
       const saveRate = () => {
         const raw = String(rateDraft).trim()
         const value = Number(raw === '' ? pricing.exchangeRate : raw)
@@ -134,6 +146,12 @@ return {
         label,
         React.createElement('input', { className: 'tk-input', value: String(form[key] ?? ''), disabled: busy, onChange: (event) => setForm({ ...form, [key]: event.target.value }) }))
       const tools = React.createElement('div', { className: 'tk-price-tools' },
+        usedOnlyAvailable ? React.createElement('button', {
+          className: 'tk-btn tk-mini-btn' + (usedOnly ? ' tk-btn-active' : ''),
+          disabled: busy,
+          title: '只显示实际用过或 DSH 设置里已配置的模型',
+          onClick: () => setUsedOnly(!usedOnly),
+        }, usedOnly ? '✓ 只看在用' : '只看在用') : null,
         React.createElement('button', { className: 'tk-btn', disabled: busy, onClick: () => setForm({ modelId: '', displayName: '', input: '0', output: '0', cacheRead: '0', cacheWrite: '0' }) }, '＋ 添加 / 覆盖价格'),
         React.createElement('button', { className: 'tk-btn', disabled: busy, onClick: () => post({ action: 'sync' }) }, busy ? '处理中…' : '⟳ 同步 models.dev'),
         React.createElement('label', { className: 'tk-price-rate' }, '汇率 $→¥',
@@ -152,7 +170,7 @@ return {
       const noticeBar = notice === null ? null : React.createElement('div', { className: 'tk-price-notice' + (notice.ok ? '' : ' tk-price-notice-bad') }, notice.message)
       return React.createElement('div', { className: 'tk-card' },
         React.createElement('button', { className: 'tk-price-toggle', onClick: () => setOpen(!open), 'aria-expanded': open },
-          React.createElement('span', null, '计价明细（每百万 Token）· 共 ' + fmtInt((pricing.entries || []).length) + ' 个模型 · ' + sourceText + errorText),
+          React.createElement('span', null, '计价明细（每百万 Token）· ' + fmtInt(visibleEntries.length) + ' / ' + fmtInt(allEntries.length) + ' 个模型 · ' + sourceText + errorText),
           React.createElement('span', null, open ? '−' : '+')),
         open ? React.createElement('div', null, tools, editor, noticeBar, React.createElement('table', { className: 'tk-table', style: { marginTop: '12px' } },
           React.createElement('thead', null, React.createElement('tr', null, labels.map((label) => React.createElement('th', { key: label }, label)))),

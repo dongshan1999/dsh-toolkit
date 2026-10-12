@@ -18,20 +18,30 @@
   手工调价直接改本文件；改完记得同步升 `host.js` 导入行的 `?v=` 与 live-entry
   的版本（见根 README 的两条铁律）。
 
-## 计价（三层合并，自带价目表）
+## 计价（三层合并 + 图片生成按张，自带价目表）
 
 - **内置打底**：`pricing-defaults.mjs` 随插件分发，永远可用。
-- **插件自有价目文件**：`~/.dsh/token-usage/pricing.json`
+- **插件自有价目文件**：`<插件根>/data/token-usage/pricing.json`
   （`TOKEN_USAGE_PRICING` 环境变量可改路径）。两层内容，条目带 `source` 区分：
   - `source: 'user'` — 面板里手工添加/修改的价目，**同步永不覆盖**；
   - `source: 'models-dev'` — models.dev 同步写入，下次同步刷新。
   - `deletedModelIds` 删除墓碑：删过的条目（含内置表里的）不会被同步复活。
-- **合并优先级**：用户手工 > models.dev 同步 > 内置表；文件损坏/缺失只降级内置并标错。
+- **图片生成（image-gen）按张计费**：`<插件根>/data/config.json` 里配了
+  `pricePerImage`（美元/张）的生图模型，会作为价目条目出现在计价明细
+  （token 单价显示 `—`，按张单价标在显示名旁）；每次生成落一条记录到
+  `<插件根>/data/usage.jsonl`，scan 时合并为伪会话行「图片生成」，
+  成本 = 当前每张单价 × 张数（与 token 同哲学：当前价 × 历史用量）。
+- **合并优先级**：用户手工 > models.dev 同步 > 内置表；图片生成条目最后覆盖同名。
+  文件损坏/缺失只降级内置并标错。
 - **models.dev 同步**：面板「⟳ 同步 models.dev」按钮 → host 拉取
   `https://models.dev/api.json`（15s 超时），过滤非文本模型（deprecated、audio、
   embedding、image、tts 等），ID 归一化（剥 `provider/` 前缀、`:变体`、`@`→`-`、
   `[1m]` 后缀，转小写），同 ID 取最新发布；规则见 `host.js` 的 `flattenModelsDev()`。
+  匹配**只取精确 + 日期快照后缀**（如 `-20250514` / `-latest`），家族变体
+  （`glm-x-flash-eu`、`grok-4.7` 这类）不再被前缀扩散带进来。
+- **只看在用**：计价明细默认只显示最近一次 scan 实际用过的模型
+  （`GET /api/token-usage/pricing` 返回 `used`），可一键切回全量。
 - **路由**：`GET /api/token-usage/pricing` 返回 entries + `source`/`builtin`/
-  `overrides`/`sync`；`POST` 同一路由 `{action: 'upsert'|'delete'|'sync'}`。
+  `overrides`/`sync`/`used`；`POST` 同一路由 `{action: 'upsert'|'delete'|'sync'}`。
 - 请求侧模型名未命中（精确 → 别名 `MODEL_ALIASES` → 最长前缀）成本仍记 0，
   请求标「未配价」。

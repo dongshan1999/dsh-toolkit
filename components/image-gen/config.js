@@ -11,7 +11,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-import { CONFIG_FILE } from './paths.js?v=35'
+import { CONFIG_FILE } from './paths.js?v=36'
 
 /** OpenAI Images API 的标准尺寸。 */
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -48,6 +48,12 @@ function groupOf(id) {
   return GROUPS[id] || GROUPS.custom
 }
 
+/** 每张单价（美元/张）：正数保留两位内的精度，非法/负值视为未配置（undefined）。 */
+function cleanPricePerImage(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
 function normalizeEntry(raw) {
   const model = cleanText(raw?.model)
   if (model === null) return null
@@ -61,6 +67,7 @@ function normalizeEntry(raw) {
     model,
     baseURL,
     keyEnv: cleanText(raw?.keyEnv) || group.keyEnv,
+    pricePerImage: cleanPricePerImage(raw?.pricePerImage),
     builtin: false,
   }
 }
@@ -249,6 +256,7 @@ export async function configView(ctx) {
       model: item.model,
       baseURL: item.baseURL,
       keyEnv: item.keyEnv,
+      pricePerImage: item.pricePerImage,
       builtin: item.builtin === true,
       isDefault: item.id === resolved.defaultId,
       hasKey: key.apiKey !== null,

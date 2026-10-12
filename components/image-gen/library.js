@@ -9,7 +9,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-import { LIBRARY_FILE } from './paths.js?v=35'
+import { LIBRARY_FILE } from './paths.js?v=36'
 
 const LIB_ENV = 'IMAGE_GEN_LIBRARY'
 
