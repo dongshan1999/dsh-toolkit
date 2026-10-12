@@ -3,16 +3,15 @@ import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { entries as builtinPricingEntries, SOURCE_LABEL as BUILTIN_SOURCE_LABEL } from './pricing-defaults.mjs?v=15'
-import { DATA_DIR } from '../image-gen/paths.js?v=36'
+import { configFile, pricingFile, usageFile } from '../image-gen/paths.js?v=37'
 
 export const name = 'token-usage'
 export const inject = ['fs', 'sessions', 'sessionPersistence', 'sessionController', 'connection', 'llm']
 
 // 插件自有价目文件：用户自定义/修改 + models.dev 同步结果都存这里（内置表仍打底）。
-// 默认收在插件统一数据目录（<插件根>/data/token-usage/pricing.json），与 image-gen
+// 默认收在插件统一数据目录（$DSH_HOME/dsh-toolkit/token-usage/pricing.json），与 image-gen
 // 的图库/配置/花费记录同进退；TOKEN_USAGE_PRICING 环境变量可改路径（自检注入用）。
 // 文件缺失/损坏只降级到内置表。
-const PRICING_FILE = join(DATA_DIR, 'token-usage', 'pricing.json')
 const MODELS_DEV_API = 'https://models.dev/api.json'
 const DEFAULT_USD_CNY = 7.2
 // 诊断日志默认关闭：设 TOKEN_USAGE_DIAG=1 才写入系统临时目录（排障用，不污染 TMPDIR）。
@@ -41,7 +40,7 @@ function numberOf(value) {
 
 function pricingFilePath() {
   const fromEnv = process.env.TOKEN_USAGE_PRICING
-  return fromEnv !== undefined && fromEnv !== '' ? fromEnv : PRICING_FILE
+  return fromEnv !== undefined && fromEnv.trim() !== '' ? fromEnv : pricingFile()
 }
 
 // ── models.dev 同步（过滤与 ID 归一化规则见 flattenModelsDev）──
@@ -200,7 +199,7 @@ function applyInner(ctx) {
     return builtinRate
   }
 
-  // ── 用户价目文件（<插件根>/data/token-usage/pricing.json，TOKEN_USAGE_PRICING 可改路径）──
+  // ── 用户价目文件（$DSH_HOME/dsh-toolkit/token-usage/pricing.json，TOKEN_USAGE_PRICING 可改路径）──
   // { version, models: [{modelId, displayName, input, output, cacheRead, cacheWrite, source}],
   //   deletedModelIds: [...], modelsDevSync: { lastSyncAt, lastSyncError, lastCount } }
   // source: 'user' 手工增改（同步不覆盖）| 'models-dev' 同步写入（下次同步刷新）。
@@ -354,28 +353,29 @@ function applyInner(ctx) {
     return { ok: true, message: '同步完成：' + selected.length + ' 个在用模型（' + preview + (selected.length > 5 ? ' 等' : '') + '）' }
   }
 
-  // ── 图片生成（image-gen）计费：读插件 data/config.json 里的「每张单价」──
+  // ── 图片生成（image-gen）计费：读 image-gen 的 config.json 里的「每张单价」──
   // 返回 Map<模型名, { pricePerImage, name }>；未配置/读不到时为空（生图不计成本，只记次数）。
   let imagePriceCache
   // image-gen 配置/花费文件的 mtime：任一变化都让 pricing() 与 usage 缓存失效。
+  // 路径与 image-gen 同源（IMAGE_GEN_CONFIG / IMAGE_GEN_USAGE 覆盖同样生效）。
   function imageMtimeOf() {
     let mtime = 0
-    for (const file of ['config.json', 'usage.jsonl']) {
+    for (const file of [configFile(), usageFile()]) {
       try {
-        mtime = Math.max(mtime, numberOf(statSync(join(DATA_DIR, file)).mtimeMs))
+        mtime = Math.max(mtime, numberOf(statSync(file).mtimeMs))
       } catch {}
     }
     return mtime
   }
 
-  // data/usage.jsonl（图片生成记录）带 mtime 缓存的全量读取。
+  // usage.jsonl（图片生成记录）带 mtime 缓存的全量读取。
   let imageUsageCache
   function imageUsages() {
     const mtime = imageMtimeOf()
     if (imageUsageCache !== undefined && imageUsageCache.mtime === mtime) return imageUsageCache.list
     let list = []
     try {
-      const raw = JSON.parse('[' + readFileSync(join(DATA_DIR, 'usage.jsonl'), 'utf8').trim().replace(/\n+/g, ',') + ']')
+      const raw = JSON.parse('[' + readFileSync(usageFile(), 'utf8').trim().replace(/\n+/g, ',') + ']')
       if (Array.isArray(raw)) {
         list = raw
           .filter((item) => item !== null && typeof item === 'object' && typeof item.model === 'string' && item.model !== '')
@@ -388,7 +388,7 @@ function applyInner(ctx) {
 
   function imageGenPricing() {
     try {
-      const raw = JSON.parse(readFileSync(join(DATA_DIR, 'config.json'), 'utf8'))
+      const raw = JSON.parse(readFileSync(configFile(), 'utf8'))
       const models = Array.isArray(raw?.models) ? raw.models : []
       const map = new Map()
       for (const item of models) {

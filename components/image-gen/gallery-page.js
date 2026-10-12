@@ -1,8 +1,8 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { SIZES, resolveConfig } from './config.js?v=36'
-import { imageDir, scanImageDirs } from './generate.js?v=36'
+import { SIZES, resolveConfig } from './config.js?v=37'
+import { imageDir, scanImageDirs } from './generate.js?v=37'
 
 export const name = 'image-gen-gallery-page'
 export const inject = ['settings', 'credentials', 'connection', 'sessions']

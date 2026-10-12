@@ -1,24 +1,23 @@
 /**
  * @local/image-gen — 生成花费记录（纯 Host 侧，无路由、无 ctx 副作用）。
  *
- * 每次成功生成落盘一条 JSONL 记录到 <插件根>/data/usage.jsonl：
+ * 每次成功生成落盘一条 JSONL 记录到数据目录 usage.jsonl
+ * （默认 $DSH_HOME/dsh-toolkit/usage.jsonl，`IMAGE_GEN_USAGE` 可覆盖）：
  *   { time, model, size }
  * 成本不在写入时定格，由 token-usage 组件按「当前每张单价 × 张数」统一计算
  * （与 token 计价同哲学：当前价 × 历史用量）。
  * token-usage 通过 readImageUsages() 读取并合并进用量统计与计价明细。
  */
 import { appendFile, readFile, stat } from 'node:fs/promises'
-import { join } from 'node:path'
 
-import { DATA_DIR } from './paths.js?v=36'
+import { usageFile } from './paths.js?v=37'
 
 const USAGE_ENV = 'IMAGE_GEN_USAGE'
-const USAGE_FILE = join(DATA_DIR, 'usage.jsonl')
 
-/** 花费记录文件路径：`IMAGE_GEN_USAGE` 优先，默认插件目录 data/usage.jsonl。 */
+/** 花费记录文件路径：`IMAGE_GEN_USAGE` 优先，默认数据目录 usage.jsonl。 */
 export function usagePath() {
   const override = typeof process.env[USAGE_ENV] === 'string' ? process.env[USAGE_ENV].trim() : ''
-  return override !== '' ? override : USAGE_FILE
+  return override !== '' ? override : usageFile()
 }
 
 /** 追加一条生成记录（一张一条）；失败静默——记录缺失只影响统计，不影响生成。 */

@@ -12,8 +12,8 @@
 import { readFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { resolveConfig } from './config.js?v=36'
-import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage, scanImageDirs } from './generate.js?v=36'
+import { resolveConfig } from './config.js?v=37'
+import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage, scanImageDirs } from './generate.js?v=37'
 
 export const name = 'image-gen-generate'
 export const inject = ['settings', 'credentials', 'connection', 'sessions']

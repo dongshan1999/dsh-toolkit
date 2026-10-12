@@ -6,14 +6,14 @@
  * 请求体为 `{ model, prompt, n, size, image? }`，`size` 为像素尺寸
  * （`1024x1024` 等 OpenAI 规范取值）。不走 chat/completions，也没有任何厂商私有协议。
  *
- * 落盘统一在 imageDir()（默认插件目录 data/images，`IMAGE_GEN_DIR` 可覆盖），不写入项目目录。
+ * 落盘统一在 imageDir()（默认数据目录 images/，即 $DSH_HOME/dsh-toolkit/images，
+ * `IMAGE_GEN_DIR` 可覆盖），不写入项目目录。
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { dirname, extname, isAbsolute, join } from 'node:path'
+import { extname, join } from 'node:path'
 
-import { FAVORITES_DIR_NAME, IMAGES_DIR } from './paths.js?v=36'
-import { appendImageUsage } from './usage.js?v=36'
+import { favoritesDir as dataFavoritesDir, imagesDir } from './paths.js?v=37'
+import { appendImageUsage } from './usage.js?v=37'
 
 /** OpenAI Images API 的标准尺寸（兼容网关普遍接受这组取值）。 */
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -21,7 +21,6 @@ export const DEFAULT_SIZE = '1024x1024'
 export const MAX_REFERENCES = 9
 export const MAX_COUNT = 4
 
-const IMAGE_DIR_ENV = 'IMAGE_GEN_DIR'
 const FILE_PREFIX = 'image-gen'
 
 const MIME_BY_EXT = {
@@ -40,23 +39,14 @@ export function pickCount(value) {
   return Math.min(Math.max(Number.isInteger(value) ? value : 1, 1), MAX_COUNT)
 }
 
-/** 环境变量覆盖目录：支持 `~` 前缀展开；空串或非绝对路径视为无效。 */
-function dirOverride(value) {
-  if (typeof value !== 'string' || value.trim() === '') return null
-  let text = value.trim().replace(/\/+$/, '')
-  if (text === '') return null
-  if (text === '~' || text.startsWith('~/')) text = join(homedir(), text.slice(1))
-  return isAbsolute(text) ? text : null
-}
-
-/** 生成图统一落盘目录：`IMAGE_GEN_DIR` 优先，默认插件目录 data/images。 */
+/** 生成图统一落盘目录：`IMAGE_GEN_DIR` 优先，默认数据目录 images。 */
 export function imageDir() {
-  return dirOverride(process.env[IMAGE_DIR_ENV]) ?? IMAGES_DIR
+  return imagesDir()
 }
 
-/** 收藏目录：固定与 imageDir() 同级。 */
+/** 收藏目录：固定与 imageDir() 同级（`IMAGE_GEN_DIR` 改动时跟着走）。 */
 export function favoritesDir() {
-  return join(dirname(imageDir()), FAVORITES_DIR_NAME)
+  return dataFavoritesDir()
 }
 
 /** 读取端扫描的目录：只有统一目录（不做历史路径兼容）。 */

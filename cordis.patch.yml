@@ -1,7 +1,8 @@
-# 单一 Loader source。live-entry-38.js：计价明细「只看在用」= 实际用过 ∪ DSH 设置里已配置的模型
-# （llm.listConfigurableProviders 防御性提取）；价目文件随插件统一数据目录收纳
-# （<插件根>/data/token-usage/pricing.json，TOKEN_USAGE_PRICING 仍可覆盖）。
-# image-gen 组件统一 ?v=36；token-usage host.js ?v=22（pricing-defaults 沿用 ?v=15）。
+# 单一 Loader source。live-entry-39.js：运行时数据目录搬进 DSH Home
+# （默认 $DSH_HOME/dsh-toolkit/，DSH_TOOLKIT_DATA 可整体改道），首次启动自动迁移
+# <插件根>/data/ 与 1.3.0 老位置（~/image-gen、~/.dsh/image-gen*.json 等）；
+# token-usage 的价目/生成计费读路径与 image-gen 同源（IMAGE_GEN_CONFIG / IMAGE_GEN_USAGE 同样生效）。
+# image-gen 组件统一 ?v=37；token-usage host.js ?v=23（pricing-defaults 沿用 ?v=15）。
 - insert:
     - id: dsh-toolkit
-      name: './live-entry-38.js'
+      name: './live-entry-39.js'
