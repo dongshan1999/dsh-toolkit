@@ -65,6 +65,12 @@
 | 收藏目录 | 随生成图目录 | `<插件根>/data/favorites` |
 | 模型目录 | `IMAGE_GEN_CONFIG` | `<插件根>/data/config.json` |
 | 提示词库 | `IMAGE_GEN_LIBRARY` | `<插件根>/data/library.json` |
+| 花费记录 | `IMAGE_GEN_USAGE` | `<插件根>/data/usage.jsonl` |
+
+- **每张单价**：模型条目可选 `pricePerImage`（美元/张，模型编辑卡里填）。
+  配了价的模型会出现在「Token 用量 → 计价明细」（按张展示），每次成功生成
+  记一条到 `data/usage.jsonl`，由 token-usage 组件按「当前单价 × 张数」
+  合并进成本统计（伪会话行「图片生成」）；没配价只记次数，成本记 0 并标「未配价」。
 
 - **密钥解析顺序**：该条目的 `keyEnv`（默认 `CUSTOM_API_KEY`）→ 配置文件 `keys[keyEnv]` →
   DSH 凭据库 → 环境变量 `$keyEnv`。保存时优先写凭据库，凭据服务不可写才回落配置文件。

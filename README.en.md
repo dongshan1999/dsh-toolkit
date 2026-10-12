@@ -40,7 +40,7 @@ The UI ships Chinese strings. In this document UI labels are quoted verbatim ins
    // ~/.dsh/profiles/<profile>/package.json
    {
      "dependencies": {
-       "dsh-toolkit": "^1.3.0"
+       "dsh-toolkit": "^0.2.0"
      },
      "dsh": {
        "profile": {
@@ -174,7 +174,7 @@ sessions are cached incrementally by revision and invalidated as soon as an even
 
 1. **Built-in table**: `components/token-usage/pricing-defaults.mjs` (79 entries, USD per million tokens),
    always available.
-2. **The plugin's own price file** `~/.dsh/token-usage/pricing.json` (`TOKEN_USAGE_PRICING` overrides the
+2. **The plugin's own price file** `<plugin>/data/token-usage/pricing.json` (`TOKEN_USAGE_PRICING` overrides the
    path) overrides the built-in table. Entries carry a source:
    - `source: 'user'` — added or edited in the panel; **never overwritten by a sync**;
    - `source: 'models-dev'` — written by a models.dev sync; replaced wholesale by the next sync.
@@ -205,7 +205,7 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 | `IMAGE_GEN_CONFIG` | Model catalog config file | `<plugin>/data/config.json` |
 | `IMAGE_GEN_LIBRARY` | Prompt library file | `<plugin>/data/library.json` |
 | `CUSTOM_API_KEY` | Default key source (an entry may define its own `keyEnv`) | — |
-| `TOKEN_USAGE_PRICING` | Price file for token-usage | `~/.dsh/token-usage/pricing.json` |
+| `TOKEN_USAGE_PRICING` | Price file for token-usage | `<plugin>/data/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev sync source (used by self-checks) | `https://models.dev/api.json` |
 | `TOKEN_USAGE_DIAG` | Set to `1` to write token-usage diagnostics | off |
 
@@ -217,7 +217,7 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 | `<plugin>/data/favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here) |
 | `<plugin>/data/config.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
 | `<plugin>/data/library.json` | Prompt library, mode 0600 |
-| `~/.dsh/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
+| `<plugin>/data/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
 | `<system temp>/dsh-token-usage-host.log` | token-usage diagnostics (only when `TOKEN_USAGE_DIAG=1`) |
 
 ---

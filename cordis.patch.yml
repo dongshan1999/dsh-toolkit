@@ -1,6 +1,7 @@
-# 单一 Loader source。live-entry-35.js：数据目录统一收敛到插件 data/（images / favorites /
-# config.json / library.json，新增 components/image-gen/paths.js 统一路径，不再落家目录），
-# 组件模块统一 ?v=35；token-usage 沿用 host.js?v=19。
+# 单一 Loader source。live-entry-38.js：计价明细「只看在用」= 实际用过 ∪ DSH 设置里已配置的模型
+# （llm.listConfigurableProviders 防御性提取）；价目文件随插件统一数据目录收纳
+# （<插件根>/data/token-usage/pricing.json，TOKEN_USAGE_PRICING 仍可覆盖）。
+# image-gen 组件统一 ?v=36；token-usage host.js ?v=22（pricing-defaults 沿用 ?v=15）。
 - insert:
     - id: dsh-toolkit
-      name: './live-entry-35.js'
+      name: './live-entry-38.js'

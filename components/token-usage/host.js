@@ -1,14 +1,18 @@
 import { appendFileSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 
 import { entries as builtinPricingEntries, SOURCE_LABEL as BUILTIN_SOURCE_LABEL } from './pricing-defaults.mjs?v=15'
+import { DATA_DIR } from '../image-gen/paths.js?v=36'
 
 export const name = 'token-usage'
-export const inject = ['fs', 'sessions', 'sessionPersistence', 'sessionController', 'connection']
+export const inject = ['fs', 'sessions', 'sessionPersistence', 'sessionController', 'connection', 'llm']
 
 // 插件自有价目文件：用户自定义/修改 + models.dev 同步结果都存这里（内置表仍打底）。
-// TOKEN_USAGE_PRICING 环境变量可改路径（自检注入用）。文件缺失/损坏只降级到内置表。
+// 默认收在插件统一数据目录（<插件根>/data/token-usage/pricing.json），与 image-gen
+// 的图库/配置/花费记录同进退；TOKEN_USAGE_PRICING 环境变量可改路径（自检注入用）。
+// 文件缺失/损坏只降级到内置表。
+const PRICING_FILE = join(DATA_DIR, 'token-usage', 'pricing.json')
 const MODELS_DEV_API = 'https://models.dev/api.json'
 const DEFAULT_USD_CNY = 7.2
 // 诊断日志默认关闭：设 TOKEN_USAGE_DIAG=1 才写入系统临时目录（排障用，不污染 TMPDIR）。
@@ -37,7 +41,7 @@ function numberOf(value) {
 
 function pricingFilePath() {
   const fromEnv = process.env.TOKEN_USAGE_PRICING
-  return fromEnv !== undefined && fromEnv !== '' ? fromEnv : homedir() + '/.dsh/token-usage/pricing.json'
+  return fromEnv !== undefined && fromEnv !== '' ? fromEnv : PRICING_FILE
 }
 
 // ── models.dev 同步（过滤与 ID 归一化规则见 flattenModelsDev）──
@@ -128,6 +132,44 @@ function applyInner(ctx) {
   const pending = new Map()
   // 每会话增量缓存：calls 为全量解析结果，revision/sourceUpdatedAt 判断是否需要重读
   const sessionCache = new Map()
+  // 最近一次 scan 看到的在用模型（计价明细「只看在用」过滤用）
+  let lastUsedModels = []
+
+  // DSH 设置里配置的全部模型（llm 服务 listConfigurableProviders，形状未公开，防御性提取）。
+  // 「只看在用」= 实际用过（会话事件流）∪ 设置里已配置，两边任一命中即显示。
+  function configuredModels() {
+    const llm = ctx.get('llm')
+    if (llm === null || llm === undefined || typeof llm.listConfigurableProviders !== 'function') return []
+    let providers
+    try {
+      providers = llm.listConfigurableProviders()
+    } catch {
+      return []
+    }
+    const names = new Set()
+    for (const provider of Array.isArray(providers) ? providers : []) {
+      if (provider === null || typeof provider !== 'object') {
+        if (typeof provider === 'string' && provider.trim() !== '') names.add(provider.trim())
+        continue
+      }
+      for (const list of [provider.models, provider.modelIds, provider.entries]) {
+        if (!Array.isArray(list)) continue
+        for (const item of list) {
+          const id = typeof item === 'string'
+            ? item
+            : item !== null && typeof item === 'object' ? (item.id ?? item.model ?? item.modelId) : null
+          if (typeof id === 'string' && id.trim() !== '') names.add(id.trim())
+        }
+      }
+    }
+    return Array.from(names)
+  }
+
+  function inUseModelNames() {
+    const merged = new Set(lastUsedModels.map((name) => String(name)))
+    for (const name of configuredModels()) merged.add(name)
+    return Array.from(merged)
+  }
 
   // 内置价目：随插件分发（pricing-defaults.mjs），进程内只构建一次。
   function builtinPricing() {
@@ -158,7 +200,7 @@ function applyInner(ctx) {
     return builtinRate
   }
 
-  // ── 用户价目文件（~/.dsh/token-usage/pricing.json，TOKEN_USAGE_PRICING 可改路径）──
+  // ── 用户价目文件（<插件根>/data/token-usage/pricing.json，TOKEN_USAGE_PRICING 可改路径）──
   // { version, models: [{modelId, displayName, input, output, cacheRead, cacheWrite, source}],
   //   deletedModelIds: [...], modelsDevSync: { lastSyncAt, lastSyncError, lastCount } }
   // source: 'user' 手工增改（同步不覆盖）| 'models-dev' 同步写入（下次同步刷新）。
@@ -278,11 +320,16 @@ function applyInner(ctx) {
     if (wanted.size === 0) {
       return { ok: false, message: '当前没有任何已使用的模型记录，未同步价目' }
     }
-    // 匹配：精确 / 别名 / 前缀互相（覆盖快照日期后缀与 models.dev 家族名差异）。
+    // 匹配：精确 / 别名 / 「日期快照」式后缀。家族变体（glm-x-flash-eu、grok-4.7 这类）
+    // 不再被前缀扩散带进来——宁可留空显示「未配价」，也不要一堆用不上的条目。
+    const SNAPSHOT_TAIL = /^(?:\d{6,8}|latest|preview)$/
     const selected = entries.filter((entry) => {
       if (wanted.has(entry.modelId)) return true
       for (const key of wanted) {
-        if (entry.modelId.startsWith(key) || key.startsWith(entry.modelId)) return true
+        if (entry.modelId.length > key.length && entry.modelId.startsWith(key + '-')
+          && SNAPSHOT_TAIL.test(entry.modelId.slice(key.length + 1))) return true
+        if (key.length > entry.modelId.length && key.startsWith(entry.modelId + '-')
+          && SNAPSHOT_TAIL.test(key.slice(entry.modelId.length + 1))) return true
       }
       return false
     })
@@ -307,12 +354,68 @@ function applyInner(ctx) {
     return { ok: true, message: '同步完成：' + selected.length + ' 个在用模型（' + preview + (selected.length > 5 ? ' 等' : '') + '）' }
   }
 
+  // ── 图片生成（image-gen）计费：读插件 data/config.json 里的「每张单价」──
+  // 返回 Map<模型名, { pricePerImage, name }>；未配置/读不到时为空（生图不计成本，只记次数）。
+  let imagePriceCache
+  // image-gen 配置/花费文件的 mtime：任一变化都让 pricing() 与 usage 缓存失效。
+  function imageMtimeOf() {
+    let mtime = 0
+    for (const file of ['config.json', 'usage.jsonl']) {
+      try {
+        mtime = Math.max(mtime, numberOf(statSync(join(DATA_DIR, file)).mtimeMs))
+      } catch {}
+    }
+    return mtime
+  }
+
+  // data/usage.jsonl（图片生成记录）带 mtime 缓存的全量读取。
+  let imageUsageCache
+  function imageUsages() {
+    const mtime = imageMtimeOf()
+    if (imageUsageCache !== undefined && imageUsageCache.mtime === mtime) return imageUsageCache.list
+    let list = []
+    try {
+      const raw = JSON.parse('[' + readFileSync(join(DATA_DIR, 'usage.jsonl'), 'utf8').trim().replace(/\n+/g, ',') + ']')
+      if (Array.isArray(raw)) {
+        list = raw
+          .filter((item) => item !== null && typeof item === 'object' && typeof item.model === 'string' && item.model !== '')
+          .map((item) => ({ time: numberOf(item.time), model: item.model }))
+      }
+    } catch {}
+    imageUsageCache = { mtime, list }
+    return list
+  }
+
+  function imageGenPricing() {
+    try {
+      const raw = JSON.parse(readFileSync(join(DATA_DIR, 'config.json'), 'utf8'))
+      const models = Array.isArray(raw?.models) ? raw.models : []
+      const map = new Map()
+      for (const item of models) {
+        const model = typeof item?.model === 'string' ? item.model.trim() : ''
+        const price = Number(item?.pricePerImage)
+        if (model === '' || !Number.isFinite(price) || price <= 0) continue
+        map.set(model, { pricePerImage: price, name: typeof item?.name === 'string' && item.name !== '' ? item.name : model })
+      }
+      imagePriceCache = map
+      return map
+    } catch {
+      imagePriceCache = new Map()
+      return imagePriceCache
+    }
+  }
+
+  function imagePricing() {
+    return imagePriceCache !== undefined ? imagePriceCache : imageGenPricing()
+  }
+
   async function pricing() {
     const builtins = builtinPricing()
     const current = readUserPricing()
     const path = pricingFilePath()
-    if (pricingCache !== undefined && pricingCache.fileMtime === current.mtimeMs) return pricingCache
-    // 合并：内置表打底 → 用户/同步文件覆盖新增 → 删除墓碑剔除。
+    const imageMtime = imageMtimeOf()
+    if (pricingCache !== undefined && pricingCache.fileMtime === current.mtimeMs && pricingCache.imageMtime === imageMtime) return pricingCache
+    // 合并：内置表打底 → 用户/同步文件覆盖新增 → 图片生成（按张）→ 删除墓碑剔除。
     const merged = new Map(builtins.entries.map((item) => [item.modelId.toLowerCase(), { ...item }]))
     let overrides = 0
     if (current.file !== null) {
@@ -328,6 +431,18 @@ function applyInner(ctx) {
         overrides += 1
       }
       for (const id of current.file.deletedModelIds) merged.delete(id.toLowerCase())
+    }
+    // 图片生成模型：token 单价为 0，按「每张单价」计费（perImage，美元/张）。
+    for (const [model, info] of imageGenPricing()) {
+      merged.set(model.toLowerCase(), {
+        modelId: model,
+        displayName: info.name + '（图片·按张）',
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        perImage: info.pricePerImage,
+      })
     }
     const entries = Array.from(merged.values()).sort((a, b) => a.modelId.localeCompare(b.modelId))
     const table = Object.create(null)
@@ -353,6 +468,7 @@ function applyInner(ctx) {
       error: current.error,
       available: true,
       fileMtime: current.mtimeMs,
+      imageMtime,
     }
     diag(`pricing loaded: builtin=${builtins.entries.length} overrides=${overrides} source=${pricingCache.source} path=${path}${current.mtimeMs > 0 ? ' mtime=' + current.mtimeMs : ' (missing)'} error=${current.error === null ? 'none' : current.error}`)
     return pricingCache
@@ -658,8 +774,46 @@ function applyInner(ctx) {
       rows.push(row)
     }
 
+    // ── 图片生成（image-gen）花费合并：伪会话行「图片生成」+ 模型分布累计 ──
+    const imagePrices = imagePricing()
+    const imageCalls = imageUsages()
+      .filter((item) => selected.start === null || (item.time >= selected.start && item.time <= selected.end))
+    if (imageCalls.length > 0) {
+      const imageRow = {
+        id: 'image-gen', title: '图片生成', cwd: '', origin: 'session', live: false,
+        updatedAt: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0,
+        cost: 0, requests: 0, unpriced: 0, loop: 0, calls: [],
+      }
+      for (const item of imageCalls) {
+        const price = imagePrices.get(item.model)
+        const cost = price !== undefined ? price.pricePerImage : 0
+        imageRow.updatedAt = Math.max(imageRow.updatedAt, item.time)
+        imageRow.cost += cost
+        imageRow.requests += 1
+        imageRow.unpriced += price === undefined ? 1 : 0
+        imageRow.calls.push({ time: item.time, model: item.model, provider: 'image-gen', input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost, priced: price !== undefined, image: true })
+        totals.cost += cost
+        totals.requests += 1
+        totals.unpriced += price === undefined ? 1 : 0
+        let bucket = models.get(item.model)
+        if (bucket === undefined) {
+          bucket = {
+            model: item.model,
+            displayName: price !== undefined ? price.name + '（图片·按张）' : item.model,
+            input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, requests: 0, loop: 0,
+          }
+          models.set(item.model, bucket)
+        }
+        bucket.cost += cost
+        bucket.requests += 1
+      }
+      if (imageRow.updatedAt === 0) imageRow.updatedAt = Date.now()
+      rows.push(imageRow)
+    }
+
     totals.loop = totals.input + totals.output + totals.cacheRead + totals.cacheWrite
     rows.sort((a, b) => b.cost - a.cost || b.loop - a.loop)
+    lastUsedModels = Array.from(models.keys())
     diag(`scan(${selected.range}) entries=${entries.length} sessions=${rows.length} pricing=${rates.entries.length}models unpriced=${totals.unpriced}/${totals.requests} cost=$${totals.cost.toFixed(4)} inst=${INSTANCE_ID} ms=${Date.now() - scanStart}`)
     return {
       generatedAt: Date.now(),
@@ -782,6 +936,7 @@ function applyInner(ctx) {
           sync: data.sync,
           exchangeRate: data.exchangeRate,
           error: data.error,
+          used: inUseModelNames(),
           entries: data.entries,
         })
       }

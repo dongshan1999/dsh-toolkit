@@ -38,7 +38,7 @@
    // ~/.dsh/profiles/<profile>/package.json
    {
      "dependencies": {
-       "dsh-toolkit": "^1.3.0"
+       "dsh-toolkit": "^0.2.0"
      },
      "dsh": {
        "profile": {
@@ -159,12 +159,13 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 - **使用趋势**：双 Y 轴折线（左 Token、右成本），各指标独立画线，从每条线自身第一个非 0 点起笔。
 - **请求查看**：按会话聚合（`会话 / 请求 / 输入 / 输出 / 缓存命中 / 总量 / 成本 / 最后活动`），
   可按 `全部来源 / 主会话 / 子会话` 过滤、按标题 / ID / 路径搜索，点行展开到**单次请求**明细。
-- **计价明细**：折叠区，展开后可增改删价目、同步 models.dev、设置汇率。
+- **计价明细**：折叠区，展开后可增改删价目、同步 models.dev、设置汇率；
+  默认「只看在用」（仅显示实际用过的模型），可一键切回全量。
 
-### 计价：三层合并，自带价目表
+### 计价：三层合并 + 图片生成按张，自带价目表
 
 1. **内置表打底**：`components/token-usage/pricing-defaults.mjs` 随插件分发（79 条，美元 / 每百万 Token），永远可用。
-2. **插件自有价目文件** `~/.dsh/token-usage/pricing.json`（`TOKEN_USAGE_PRICING` 可改）覆盖内置表，条目分两种来源：
+2. **插件自有价目文件** `<插件根>/data/token-usage/pricing.json`（`TOKEN_USAGE_PRICING` 可改）覆盖内置表，条目分两种来源：
    - `source: 'user'` — 面板里手工添加 / 修改的价目，**同步永不覆盖**；
    - `source: 'models-dev'` — 从 models.dev 同步写入，下次同步整体替换。
 3. **删除墓碑** `deletedModelIds` — 删过的条目（含内置表里的）不会被同步复活。
@@ -172,7 +173,11 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 文件缺失或损坏时只降级到内置表并在面板标注错误，不会把成本整体归零。
 
 - **同步 models.dev**：面板「⟳ 同步 models.dev」拉 `https://models.dev/api.json`（15 秒超时），
-  过滤非文本模型，ID 归一化后**只写入当前实际用过的模型**；匹配不到就明确提示、不写任何价目。
+  过滤非文本模型，ID 归一化后**只写入当前实际用过的模型**；匹配只取「精确 + 日期快照后缀」
+  （如 `-20250514`），家族变体不再被前缀扩散带进来。匹配不到就明确提示、不写任何价目。
+- **图片生成计费**：image-gen 模型配置了「每张单价」（`pricePerImage`，美元/张）即自动进入
+  计价明细（按张展示）与成本统计；每次成功生成记一条到 `<插件根>/data/usage.jsonl`，
+  面板「请求查看」里以伪会话行「图片生成」逐笔可查。未配价只记次数并标「未配价」。
 - **汇率**：默认 `7.2`，可在计价明细里改。数据一律**美元存储与计算**，换算只发生在显示层。
 - 需要对齐网关与 models.dev 的命名差异时，在 `components/token-usage/host.js` 的 `MODEL_ALIASES` 里登记。
 
@@ -192,7 +197,7 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 | `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `<插件根>/data/config.json` |
 | `IMAGE_GEN_LIBRARY` | 提示词库文件 | `<插件根>/data/library.json` |
 | `CUSTOM_API_KEY` | 默认密钥来源（每条模型也可用自己的 `keyEnv`） | — |
-| `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `~/.dsh/token-usage/pricing.json` |
+| `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `<插件根>/data/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev 同步源（自检用） | `https://models.dev/api.json` |
 | `TOKEN_USAGE_DIAG` | 设为 `1` 才写 token-usage 诊断日志（排障用） | 关闭 |
 
@@ -204,7 +209,7 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 | `<插件根>/data/favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里） |
 | `<插件根>/data/config.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
 | `<插件根>/data/library.json` | 提示词库，权限 0600 |
-| `~/.dsh/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
+| `<插件根>/data/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
 | `<系统临时目录>/dsh-token-usage-host.log` | token-usage 诊断日志（仅 `TOKEN_USAGE_DIAG=1` 时生成） |
 
 ---

@@ -582,6 +582,12 @@ window.__ModuleLoader__.load({
                     placeholder: entry.hasKey === false ? '未配置，填入后保存' : '已配置，留空不修改',
                     onChange: (e) => setEditDraft({ ...editDraft, key: e.target.value }),
                   })),
+                React.createElement('div', { className: 'ag-field' },
+                  React.createElement('label', null, '每张单价（美元/张，选填；填了才计入 Token 面板花费）'),
+                  React.createElement('input', {
+                    className: 'ag-input', inputMode: 'decimal', value: editDraft.pricePerImage || '',
+                    placeholder: '例如 0.04', onChange: (e) => setEditDraft({ ...editDraft, pricePerImage: e.target.value }),
+                  })),
                 entryTest != null && entryTest.id === entry.id && entryTest.message
                   ? React.createElement('div', { className: 'ag-msg ' + (entryTest.ok ? 'ag-msg-ok' : 'ag-msg-err') }, entryTest.message)
                   : null,
@@ -1085,11 +1091,12 @@ window.__ModuleLoader__.load({
             if (entry === null) { setEditing(null); setEditDraft(null); return }
             setAddOpen(false)
             setEditing(entry.id)
-            setEditDraft({ name: entry.name || '', model: entry.model || '', baseURL: entry.baseURL || '', key: '' })
+            setEditDraft({ name: entry.name || '', model: entry.model || '', baseURL: entry.baseURL || '', key: '', pricePerImage: entry.pricePerImage != null ? String(entry.pricePerImage) : '' })
           }
           const onSaveEdit = (entry) => {
             const model = String(editDraft?.model || '').trim()
             if (model === '') { window.alert('模型 id 不能为空'); return }
+            const priceRaw = String(editDraft?.pricePerImage || '').trim()
             postJson('/api/image-gen/config', {
               action: 'add',
               id: entry.id,
@@ -1098,6 +1105,7 @@ window.__ModuleLoader__.load({
               model,
               baseURL: String(editDraft?.baseURL || '').trim(),
               apiKey: editDraft && typeof editDraft.key === 'string' && editDraft.key.trim() !== '' ? editDraft.key.trim() : undefined,
+              pricePerImage: priceRaw !== '' ? Number(priceRaw) : undefined,
             })
               .then((result) => {
                 applyConfig(result)

@@ -12,7 +12,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, extname, isAbsolute, join } from 'node:path'
 
-import { FAVORITES_DIR_NAME, IMAGES_DIR } from './paths.js?v=35'
+import { FAVORITES_DIR_NAME, IMAGES_DIR } from './paths.js?v=36'
+import { appendImageUsage } from './usage.js?v=36'
 
 /** OpenAI Images API 的标准尺寸（兼容网关普遍接受这组取值）。 */
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -153,6 +154,7 @@ export async function saveImage(index, url) {
 /**
  * 生成 count 张并统一落盘到 imageDir()，逐张串行（接口对并发不友好）。
  * 返回原始 URL + 落盘本地路径，失败原因按张收集，不影响已成功的部分。
+ * 每张成功落盘都记一条花费（data/usage.jsonl），供 token-usage 计费合并。
  */
 export async function generateMany({ baseURL, apiKey, model, prompt, size, count, references = [], signal }) {
   const results = []
@@ -165,6 +167,7 @@ export async function generateMany({ baseURL, apiKey, model, prompt, size, count
       continue
     }
     const file = await saveImage(index, one.url)
+    if (file !== null) await appendImageUsage(model, size)
     results.push({ url: one.url, file: file === null ? null : file, name: file === null ? null : file.slice(file.lastIndexOf('/') + 1) })
   }
   return { results, failures }

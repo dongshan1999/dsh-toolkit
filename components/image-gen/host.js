@@ -16,10 +16,10 @@
  * `IMAGE_GEN_DIR` 可覆盖）并返回本地路径；下载失败不影响返回 URL。
  * 跟会话工作区无关，图片不落进项目目录。
  */
-import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=35'
+import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=36'
 // 共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例拿不到新导出；
 // 改了任何共享底层（config.js / generate.js / library.js）都要同步升这个 ?v。
-import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=35'
+import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=36'
 
 export const name = 'image-gen'
 export const inject = ['tools', 'credentials']
