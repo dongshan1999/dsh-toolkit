@@ -137,14 +137,16 @@ subject → style (stackable) → 构图与视角: … → 光线与氛围: … 
 
 ### Files and storage
 
-- Generated images go to the **plugin directory**, `data/images/` (favorites to `data/favorites/`) —
-  **never into a project directory**. `IMAGE_GEN_DIR` relocates them (a leading `~` is expanded).
+- Generated images go to the **data directory**, `$DSH_HOME/dsh-toolkit/images/` (favorites to
+  `$DSH_HOME/dsh-toolkit/favorites/`, always a sibling of the image directory) — **never into a project
+  directory**. `IMAGE_GEN_DIR` relocates them (a leading `~` is expanded). When `DSH_HOME` is unset it
+  falls back to `~/.dsh`, so the local default is `~/.dsh/dsh-toolkit/`.
 - Generation is serial (the APIs dislike concurrency); one failure does not abort the rest, and a failed
   disk write is skipped while the image URL is still returned.
 
 ### Prompt library
 
-- File: plugin directory `data/library.json` (`IMAGE_GEN_LIBRARY` overrides it).
+- File: `$DSH_HOME/dsh-toolkit/library.json` (`IMAGE_GEN_LIBRARY` overrides it).
 - Each record: `{ id, title, text, size, images: [names…], createdAt, updatedAt }`;
   `title` defaults to the first 24 characters.
 
@@ -174,8 +176,8 @@ sessions are cached incrementally by revision and invalidated as soon as an even
 
 1. **Built-in table**: `components/token-usage/pricing-defaults.mjs` (79 entries, USD per million tokens),
    always available.
-2. **The plugin's own price file** `<plugin>/data/token-usage/pricing.json` (`TOKEN_USAGE_PRICING` overrides the
-   path) overrides the built-in table. Entries carry a source:
+2. **The plugin's own price file** `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` (`TOKEN_USAGE_PRICING`
+   overrides the path) overrides the built-in table. Entries carry a source:
    - `source: 'user'` — added or edited in the panel; **never overwritten by a sync**;
    - `source: 'models-dev'` — written by a models.dev sync; replaced wholesale by the next sync.
 3. **Deletion tombstones** `deletedModelIds` — anything you deleted is not resurrected by a sync.
@@ -201,24 +203,62 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `IMAGE_GEN_DIR` | Unified output directory (favorites live in the sibling dir) | `<plugin>/data/images` |
-| `IMAGE_GEN_CONFIG` | Model catalog config file | `<plugin>/data/config.json` |
-| `IMAGE_GEN_LIBRARY` | Prompt library file | `<plugin>/data/library.json` |
+| `DSH_TOOLKIT_DATA` | Relocate the entire data directory (absolute path, `~` expanded) | `$DSH_HOME/dsh-toolkit` |
+| `IMAGE_GEN_DIR` | Unified output directory (favorites live in the sibling dir) | `$DSH_HOME/dsh-toolkit/images` |
+| `IMAGE_GEN_CONFIG` | Model catalog config file | `$DSH_HOME/dsh-toolkit/config.json` |
+| `IMAGE_GEN_LIBRARY` | Prompt library file | `$DSH_HOME/dsh-toolkit/library.json` |
+| `IMAGE_GEN_USAGE` | Generation billing log file | `$DSH_HOME/dsh-toolkit/usage.jsonl` |
 | `CUSTOM_API_KEY` | Default key source (an entry may define its own `keyEnv`) | — |
-| `TOKEN_USAGE_PRICING` | Price file for token-usage | `<plugin>/data/token-usage/pricing.json` |
+| `TOKEN_USAGE_PRICING` | Price file for token-usage | `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev sync source (used by self-checks) | `https://models.dev/api.json` |
 | `TOKEN_USAGE_DIAG` | Set to `1` to write token-usage diagnostics | off |
+| `DSH_HOME` | DSH Home location (determines the default data directory) | `~/.dsh` |
+
+`DSH_TOOLKIT_DATA` relocates the whole data directory, while the other variables override individual
+paths. `$DSH_HOME` is read from the `DSH_HOME` environment variable first (a blank string counts as
+unset, and a leading `~` is expanded) and falls back to `~/.dsh` when unset.
 
 ## Files on disk
 
+Runtime data lives under `$DSH_HOME/dsh-toolkit/` by default (i.e. `~/.dsh/dsh-toolkit/` locally):
+
 | Path | Contents |
 | --- | --- |
-| `<plugin>/data/images/` | Unified output directory (`image-gen-<UTC stamp>-<index>.png`) |
-| `<plugin>/data/favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here) |
-| `<plugin>/data/config.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
-| `<plugin>/data/library.json` | Prompt library, mode 0600 |
-| `<plugin>/data/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
+| `$DSH_HOME/dsh-toolkit/images/` | Unified output directory (`image-gen-<UTC stamp>-<index>.png`) |
+| `$DSH_HOME/dsh-toolkit/favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here; always a sibling of `images/`) |
+| `$DSH_HOME/dsh-toolkit/config.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
+| `$DSH_HOME/dsh-toolkit/library.json` | Prompt library, mode 0600 |
+| `$DSH_HOME/dsh-toolkit/usage.jsonl` | Image generation billing log (one line per successful generation) |
+| `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
 | `<system temp>/dsh-token-usage-host.log` | token-usage diagnostics (only when `TOKEN_USAGE_DIAG=1`) |
+
+### One-time migration
+
+The first start on the new data directory migrates the old data once; later starts see the marker and
+skip it. Migration is idempotent, runs silently at startup, and a failure never blocks the plugin.
+
+| Target (relative to `$DSH_HOME/dsh-toolkit/`) | Sources (the first one that exists wins) |
+| --- | --- |
+| `images/` | `<plugin>/data/images` → `~/image-gen` |
+| `favorites/` | `<plugin>/data/favorites` → `~/image-gen-favorites` |
+| `config.json` | `<plugin>/data/config.json` → `$DSH_HOME/image-gen.json` → `~/.dsh/image-gen.json` |
+| `library.json` | `<plugin>/data/library.json` → `$DSH_HOME/image-gen-library.json` → `~/.dsh/image-gen-library.json` |
+| `usage.jsonl` | `<plugin>/data/usage.jsonl` |
+| `token-usage/pricing.json` | `<plugin>/data/token-usage/pricing.json` → `$DSH_HOME/token-usage/pricing.json` → `~/.dsh/token-usage/pricing.json` |
+
+- Trigger: runs when the `$DSH_HOME/dsh-toolkit/.migrated` marker is absent; an existing marker exits at once.
+- Fallback: whatever else is left in `<plugin>/data/` (e.g. `archive/`) is moved entry by entry, leaving the
+  old directory empty.
+- A target that already exists is skipped and never overwritten.
+- On the same filesystem the move is a `rename` (instant, no bytes copied); only across filesystems does it
+  degrade to copy-then-delete. On failure the source files stay in place and are recorded in the manifest,
+  and the `.migrated` marker is **not** written, so the next start retries.
+- Before moving anything, a `.migration-backup-<timestamp>.json` manifest is written into the data
+  directory (source / target / status / size per item) and updated in place with the results.
+- When the matching environment variable override is in effect (e.g. `IMAGE_GEN_DIR` is set), that item is
+  not migrated.
+- The plugin's own `data/` is no longer the runtime data directory; it only serves as a migration source,
+  and `.gitignore` still ignores it (the old directory may be left as an empty shell).
 
 ---
 

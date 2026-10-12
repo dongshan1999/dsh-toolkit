@@ -1,7 +1,7 @@
 import { unlink } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
-import { scanImageDirs } from './generate.js?v=36'
+import { scanImageDirs } from './generate.js?v=37'
 
 export const name = 'image-gen-actions'
 export const inject = ['connection', 'sessions']

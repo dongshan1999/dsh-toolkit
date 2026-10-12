@@ -131,13 +131,14 @@ Content-Type: application/json
 
 ### 数据落地
 
-- 生成图统一落盘到**插件目录** `data/images/`（收藏 `data/favorites/`），**不写入项目目录**；
-  `IMAGE_GEN_DIR` 可整体改到别处（支持 `~` 展开）。
+- 生成图统一落盘到**数据目录** `$DSH_HOME/dsh-toolkit/images/`（收藏 `$DSH_HOME/dsh-toolkit/favorites/`，
+  固定与生成图目录同级），**不写入项目目录**；`IMAGE_GEN_DIR` 可整体改到别处（支持 `~` 展开）。
+  `$DSH_HOME` 未设时回退 `~/.dsh`，本机默认即 `~/.dsh/dsh-toolkit/`。
 - 生成逐张串行（接口对并发不友好），单张失败不影响其余；落盘失败静默跳过，仍然返回图片 URL。
 
 ### 提示词库
 
-- 库文件：插件目录 `data/library.json`（`IMAGE_GEN_LIBRARY` 可改）。
+- 库文件：`$DSH_HOME/dsh-toolkit/library.json`（`IMAGE_GEN_LIBRARY` 可改）。
 - 每条记录：`{ id, title, text, size, images: [图片名…], createdAt, updatedAt }`；
   `title` 缺省取正文前 24 字符。
 
@@ -165,7 +166,7 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 ### 计价：三层合并 + 图片生成按张，自带价目表
 
 1. **内置表打底**：`components/token-usage/pricing-defaults.mjs` 随插件分发（79 条，美元 / 每百万 Token），永远可用。
-2. **插件自有价目文件** `<插件根>/data/token-usage/pricing.json`（`TOKEN_USAGE_PRICING` 可改）覆盖内置表，条目分两种来源：
+2. **插件自有价目文件** `$DSH_HOME/dsh-toolkit/token-usage/pricing.json`（`TOKEN_USAGE_PRICING` 可改）覆盖内置表，条目分两种来源：
    - `source: 'user'` — 面板里手工添加 / 修改的价目，**同步永不覆盖**；
    - `source: 'models-dev'` — 从 models.dev 同步写入，下次同步整体替换。
 3. **删除墓碑** `deletedModelIds` — 删过的条目（含内置表里的）不会被同步复活。
@@ -176,8 +177,8 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
   过滤非文本模型，ID 归一化后**只写入当前实际用过的模型**；匹配只取「精确 + 日期快照后缀」
   （如 `-20250514`），家族变体不再被前缀扩散带进来。匹配不到就明确提示、不写任何价目。
 - **图片生成计费**：image-gen 模型配置了「每张单价」（`pricePerImage`，美元/张）即自动进入
-  计价明细（按张展示）与成本统计；每次成功生成记一条到 `<插件根>/data/usage.jsonl`，
-  面板「请求查看」里以伪会话行「图片生成」逐笔可查。未配价只记次数并标「未配价」。
+  计价明细（按张展示）与成本统计；每次成功生成记一条到 `$DSH_HOME/dsh-toolkit/usage.jsonl`
+  （`IMAGE_GEN_USAGE` 可改），面板「请求查看」里以伪会话行「图片生成」逐笔可查。未配价只记次数并标「未配价」。
 - **汇率**：默认 `7.2`，可在计价明细里改。数据一律**美元存储与计算**，换算只发生在显示层。
 - 需要对齐网关与 models.dev 的命名差异时，在 `components/token-usage/host.js` 的 `MODEL_ALIASES` 里登记。
 
@@ -193,24 +194,57 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 
 | 环境变量 | 作用 | 默认值 |
 | --- | --- | --- |
-| `IMAGE_GEN_DIR` | 生成图统一落盘目录（收藏固定在同级） | `<插件根>/data/images` |
-| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `<插件根>/data/config.json` |
-| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `<插件根>/data/library.json` |
+| `DSH_TOOLKIT_DATA` | 整个数据目录换到别处（绝对路径，支持 `~` 展开） | `$DSH_HOME/dsh-toolkit` |
+| `IMAGE_GEN_DIR` | 生成图统一落盘目录（收藏固定在同级） | `$DSH_HOME/dsh-toolkit/images` |
+| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `$DSH_HOME/dsh-toolkit/config.json` |
+| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `$DSH_HOME/dsh-toolkit/library.json` |
+| `IMAGE_GEN_USAGE` | 生成计费记录文件 | `$DSH_HOME/dsh-toolkit/usage.jsonl` |
 | `CUSTOM_API_KEY` | 默认密钥来源（每条模型也可用自己的 `keyEnv`） | — |
-| `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `<插件根>/data/token-usage/pricing.json` |
+| `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` |
 | `MODELS_DEV_API_URL` | models.dev 同步源（自检用） | `https://models.dev/api.json` |
 | `TOKEN_USAGE_DIAG` | 设为 `1` 才写 token-usage 诊断日志（排障用） | 关闭 |
+| `DSH_HOME` | DSH Home 位置（决定默认数据目录） | `~/.dsh` |
+
+`DSH_TOOLKIT_DATA` 换掉整个数据目录，其余变量逐项覆盖单个路径。`$DSH_HOME` 的取值：先读环境变量
+`DSH_HOME`（空白字符串视为未设，值支持 `~` 展开），未设则回退 `~/.dsh`。
 
 ## 数据落地
 
+运行时数据默认收在 `$DSH_HOME/dsh-toolkit/` 下（本机即 `~/.dsh/dsh-toolkit/`）：
+
 | 路径 | 内容 |
 | --- | --- |
-| `<插件根>/data/images/` | 生成图统一目录（文件名形如 `image-gen-<UTC 时间戳>-<序号>.png`） |
-| `<插件根>/data/favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里） |
-| `<插件根>/data/config.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
-| `<插件根>/data/library.json` | 提示词库，权限 0600 |
-| `<插件根>/data/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
+| `$DSH_HOME/dsh-toolkit/images/` | 生成图统一目录（文件名形如 `image-gen-<UTC 时间戳>-<序号>.png`） |
+| `$DSH_HOME/dsh-toolkit/favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里；固定与 `images/` 同级） |
+| `$DSH_HOME/dsh-toolkit/config.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
+| `$DSH_HOME/dsh-toolkit/library.json` | 提示词库，权限 0600 |
+| `$DSH_HOME/dsh-toolkit/usage.jsonl` | 图片生成计费记录（每次成功生成一行） |
+| `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
 | `<系统临时目录>/dsh-token-usage-host.log` | token-usage 诊断日志（仅 `TOKEN_USAGE_DIAG=1` 时生成） |
+
+### 一次性迁移
+
+新数据目录首次启动时自动迁移一次，之后启动读到标记即跳过。迁移是幂等的、启动时静默执行，
+失败不影响插件启动。
+
+| 迁移目标（相对 `$DSH_HOME/dsh-toolkit/`） | 迁移源（按顺序取第一个存在的） |
+| --- | --- |
+| `images/` | `<插件根>/data/images` → `~/image-gen` |
+| `favorites/` | `<插件根>/data/favorites` → `~/image-gen-favorites` |
+| `config.json` | `<插件根>/data/config.json` → `$DSH_HOME/image-gen.json` → `~/.dsh/image-gen.json` |
+| `library.json` | `<插件根>/data/library.json` → `$DSH_HOME/image-gen-library.json` → `~/.dsh/image-gen-library.json` |
+| `usage.jsonl` | `<插件根>/data/usage.jsonl` |
+| `token-usage/pricing.json` | `<插件根>/data/token-usage/pricing.json` → `$DSH_HOME/token-usage/pricing.json` → `~/.dsh/token-usage/pricing.json` |
+
+- 触发条件：`$DSH_HOME/dsh-toolkit/.migrated` 标记不存在时执行；标记存在则直接跳过（秒退）。
+- 兜底：`<插件根>/data/` 里剩下的其它条目（例如 `archive/`）也逐个搬到新目录，老目录留空。
+- 目标位置已存在 → 跳过，绝不覆盖。
+- 同盘用 `rename`（秒完成、不拷字节）；跨盘才退化为复制后删源；失败时保留原文件、记入清单
+  且**不**写 `.migrated` 标记，下次启动重试。
+- 迁移前先在数据目录写 `.migration-backup-<时间戳>.json` 清单（记录每项的 source / target / status / 大小），
+  完成后原地更新为结果。
+- 对应的环境变量覆盖生效时（例如设了 `IMAGE_GEN_DIR`），该项不迁移。
+- 插件目录的 `data/` 不再是运行时数据目录，只作为迁移来源；`.gitignore` 仍忽略它（老目录可能还留着空壳）。
 
 ---
 

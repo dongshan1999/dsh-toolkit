@@ -4,12 +4,12 @@
  * 结构：`{ prompts: [ { id, title, text, size, images: [name…], createdAt, updatedAt } ] }`
  * `images` 记录该条提示词生成过的图片名（落在统一目录，按名可直接读）。
  *
- * 库文件路径：`IMAGE_GEN_LIBRARY` → 插件目录 data/library.json。
+ * 库文件路径：`IMAGE_GEN_LIBRARY` → 数据目录 library.json（默认 $DSH_HOME/dsh-toolkit/library.json）。
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-import { LIBRARY_FILE } from './paths.js?v=36'
+import { libraryFile } from './paths.js?v=37'
 
 const LIB_ENV = 'IMAGE_GEN_LIBRARY'
 
@@ -23,11 +23,11 @@ function cleanText(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 }
 
-/** 库文件路径：`IMAGE_GEN_LIBRARY` 优先，默认插件目录 data/library.json。 */
+/** 库文件路径：`IMAGE_GEN_LIBRARY` 优先，默认数据目录 library.json。 */
 export function libraryPath() {
   const override = cleanText(process.env[LIB_ENV])
   if (override !== null) return override
-  return LIBRARY_FILE
+  return libraryFile()
 }
 
 function empty() {

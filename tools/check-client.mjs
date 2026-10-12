@@ -17,10 +17,17 @@
 import { promises as fs } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+// 自检全程把默认数据目录重定向到沙箱：默认落点是 $DSH_HOME/dsh-toolkit/（真实用户数据），
+// 自检绝不能写进去。逐项环境变量（IMAGE_GEN_CONFIG 等）仍然按需覆盖。
+const SANDBOX_DATA = path.join(ROOT, '.selfcheck-data')
+await fs.rm(SANDBOX_DATA, { recursive: true, force: true })
+process.env.DSH_TOOLKIT_DATA = SANDBOX_DATA
 let failed = 0
 const fail = (msg) => { failed += 1; console.log('  ✗ ' + msg) }
 const pass = (msg) => console.log('  ✓ ' + msg)
@@ -887,6 +894,155 @@ try {
   await cleanupSelfcheckPricing()
 } catch (e) {
   fail('token-usage host 冒烟异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+}
+
+// ───────────── 4) 数据目录：路径解析 + 老位置一次性迁移 ─────────────
+console.log()
+console.log('[4] 数据目录：$DSH_HOME/dsh-toolkit 路径解析 + 迁移')
+
+const pathsModule = await import(pathToFileURL(path.join(ROOT, 'components', 'image-gen', 'paths.js')).href)
+const migrateModule = await import(pathToFileURL(path.join(ROOT, 'components', 'image-gen', 'migrate.js')).href)
+
+const ENV_KEYS = ['DSH_HOME', 'DSH_TOOLKIT_DATA', 'IMAGE_GEN_DIR', 'IMAGE_GEN_CONFIG', 'IMAGE_GEN_LIBRARY', 'IMAGE_GEN_USAGE', 'TOKEN_USAGE_PRICING']
+const savedEnv = ENV_KEYS.map((name) => [name, process.env[name]])
+const setEnv = (name, value) => { if (value === undefined) delete process.env[name]; else process.env[name] = value }
+const clearDataEnv = () => ENV_KEYS.forEach((name) => delete process.env[name])
+const writeAt = async (file, text) => {
+  await fs.mkdir(path.dirname(file), { recursive: true })
+  await fs.writeFile(file, text)
+}
+const exists = (target) => fs.access(target).then(() => true, () => false)
+
+const HOME_DIR = os.homedir()
+const DEFAULT_DATA_DIR = path.join(HOME_DIR, '.dsh', 'dsh-toolkit')
+
+// ── 4.1 路径解析：默认值 + 各级覆盖 ──
+{
+  clearDataEnv()
+  check(pathsModule.dataDir() === DEFAULT_DATA_DIR,
+    `DSH_HOME 未设 → 数据目录 ~/.dsh/dsh-toolkit（当前：${pathsModule.dataDir()}）`)
+  check(pathsModule.dshHome() === path.join(HOME_DIR, '.dsh'), 'DSH_HOME 未设 → ~/.dsh')
+  setEnv('DSH_HOME', '~/selfcheck-dsh-home')
+  check(pathsModule.dataDir() === path.join(HOME_DIR, 'selfcheck-dsh-home', 'dsh-toolkit'), 'DSH_HOME 支持 ~ 展开')
+  setEnv('DSH_HOME', '   ')
+  check(pathsModule.dataDir() === DEFAULT_DATA_DIR, 'DSH_HOME 空白串视为未设')
+
+  setEnv('DSH_HOME', '/tmp/selfcheck-dsh-home')
+  setEnv('DSH_TOOLKIT_DATA', '/tmp/selfcheck-data')
+  const resolved = pathsModule.resolvePaths()
+  check(resolved.dataDir === '/tmp/selfcheck-data', 'DSH_TOOLKIT_DATA 把整个数据目录改道')
+  check(resolved.imagesDir === path.join('/tmp/selfcheck-data', 'images')
+    && resolved.favoritesDir === path.join('/tmp/selfcheck-data', 'favorites'),
+    '生成图与收藏默认落点同级（data/images、data/favorites）')
+  check(resolved.configFile === '/tmp/selfcheck-data/config.json'
+    && resolved.libraryFile === '/tmp/selfcheck-data/library.json'
+    && resolved.usageFile === '/tmp/selfcheck-data/usage.jsonl'
+    && resolved.pricingFile === path.join('/tmp/selfcheck-data', 'token-usage', 'pricing.json'),
+    'config.json / library.json / usage.jsonl / token-usage/pricing.json 默认落点齐全')
+  check(resolved.overridden.data === true && resolved.overridden.images === false,
+    'resolvePaths 标出被环境变量接管的项')
+
+  setEnv('IMAGE_GEN_DIR', '~/pics')
+  setEnv('IMAGE_GEN_CONFIG', '/tmp/selfcheck-cfg.json')
+  setEnv('IMAGE_GEN_LIBRARY', '/tmp/selfcheck-lib.json')
+  setEnv('IMAGE_GEN_USAGE', '/tmp/selfcheck-usage.jsonl')
+  setEnv('TOKEN_USAGE_PRICING', '/tmp/selfcheck-pricing.json')
+  const perItem = pathsModule.resolvePaths()
+  check(perItem.imagesDir === path.join(HOME_DIR, 'pics') && perItem.favoritesDir === path.join(HOME_DIR, 'favorites'),
+    'IMAGE_GEN_DIR 覆盖生成图目录（收藏固定与它同级，沿用旧语义）')
+  check(perItem.configFile === '/tmp/selfcheck-cfg.json' && perItem.libraryFile === '/tmp/selfcheck-lib.json'
+    && perItem.usageFile === '/tmp/selfcheck-usage.jsonl' && perItem.pricingFile === '/tmp/selfcheck-pricing.json',
+    '逐项覆盖 IMAGE_GEN_CONFIG / IMAGE_GEN_LIBRARY / IMAGE_GEN_USAGE / TOKEN_USAGE_PRICING 继续有效')
+  setEnv('IMAGE_GEN_DIR', 'relative/dir')
+  check(pathsModule.imagesDir() === path.join('/tmp/selfcheck-data', 'images'),
+    'IMAGE_GEN_DIR 非绝对路径视为未设（回退默认）')
+}
+
+// ── 4.2 迁移：在沙箱插件根 + 沙箱 home 里完整跑一遍 ──
+const LEGACY_ROOT = path.join(ROOT, '.selfcheck-legacy')
+const CASE_DATA = path.join(ROOT, '.selfcheck-data')
+const CASE_PLUGIN = path.join(LEGACY_ROOT, 'plugin')
+const CASE_HOME = path.join(LEGACY_ROOT, 'home')
+try {
+  await fs.rm(LEGACY_ROOT, { recursive: true, force: true })
+  await fs.rm(CASE_DATA, { recursive: true, force: true })
+  const legacy = path.join(CASE_PLUGIN, 'data')
+  await writeAt(path.join(legacy, 'images', 'image-gen-a.png'), 'A')
+  await writeAt(path.join(legacy, 'images', 'image-gen-b.png'), 'B')
+  await writeAt(path.join(legacy, 'favorites', 'fav.png'), 'F')
+  await writeAt(path.join(legacy, 'config.json'), '{"models":["legacy"]}')
+  await writeAt(path.join(legacy, 'library.json'), '{"prompts":[]}')
+  await writeAt(path.join(legacy, 'usage.jsonl'), '{"time":1,"model":"m","size":"1024x1024"}\n')
+  await writeAt(path.join(legacy, 'token-usage', 'pricing.json'), '{"entries":[]}')
+  await writeAt(path.join(legacy, 'archive', 'old.png'), 'O')          // 未认领条目 → 兜底搬运
+  await writeAt(path.join(CASE_HOME, 'image-gen', 'older.png'), 'X')   // 1.3.0 老位置（插件根优先，不搬它）
+
+  clearDataEnv()
+  setEnv('DSH_HOME', path.join(LEGACY_ROOT, 'dsh-home'))
+  setEnv('DSH_TOOLKIT_DATA', CASE_DATA)
+
+  const first = migrateModule.migrateLegacyData({ pluginRoot: CASE_PLUGIN, home: CASE_HOME })
+  check(first.ran === true && first.errors.length === 0 && first.moved === 7 && first.copied === 0,
+    `首次启动迁移 7 项老数据（moved=${first.moved}, copied=${first.copied}, errors=${first.errors.length}）`)
+  check(path.join(CASE_DATA, 'images') === pathsModule.imagesDir(), '迁移目标就是 paths.js 解析出的默认目录')
+  check(await exists(path.join(CASE_DATA, 'images', 'image-gen-a.png'))
+    && await exists(path.join(CASE_DATA, 'images', 'image-gen-b.png'))
+    && await exists(path.join(CASE_DATA, 'favorites', 'fav.png'))
+    && await exists(path.join(CASE_DATA, 'usage.jsonl'))
+    && await exists(path.join(CASE_DATA, 'token-usage', 'pricing.json'))
+    && await exists(path.join(CASE_DATA, 'archive', 'old.png')),
+    '生成图 / 收藏 / 记录 / 价目 / 未认领条目都落到新目录')
+  check(!(await exists(path.join(legacy, 'images'))) && !(await exists(path.join(legacy, 'config.json'))),
+    '同盘 rename：老位置搬空（留空壳，不复制字节）')
+  check(await exists(path.join(CASE_HOME, 'image-gen', 'older.png')),
+    '每项取第一个存在的源：插件根 data/ 优先于 1.3.0 的 ~/image-gen')
+  check(await exists(path.join(CASE_DATA, '.migrated')), '迁移后写下 .migrated 标记')
+  const manifestName = (await fs.readdir(CASE_DATA)).find((name) => name.startsWith('.migration-backup-'))
+  const manifest = manifestName === undefined ? null : JSON.parse(await fs.readFile(path.join(CASE_DATA, manifestName), 'utf8'))
+  check(manifest !== null && manifest.status === 'done' && manifest.entries.length === 7 && manifest.errors.length === 0,
+    `迁移清单写下每项 source/target/状态（${manifestName}，entries=${manifest?.entries?.length}）`)
+  const mode = (await fs.stat(path.join(CASE_DATA, 'config.json'))).mode & 0o777
+  check(mode === 0o600, `含密钥的 config.json 落地权限 0600（当前：${mode.toString(8)}）`)
+
+  const second = migrateModule.migrateLegacyData({ pluginRoot: CASE_PLUGIN, home: CASE_HOME })
+  check(second.ran === false && second.reason === 'already-migrated', '再次启动直接跳过（.migrated 幂等）')
+} catch (e) {
+  fail('迁移用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+}
+
+// ── 4.3 迁移的两条护栏：目标已存在不覆盖；被环境变量接管的项不迁移 ──
+const DATA2 = path.join(ROOT, '.selfcheck-data2')
+const PLUGIN2 = path.join(LEGACY_ROOT, 'plugin2')
+try {
+  await fs.rm(DATA2, { recursive: true, force: true })
+  await fs.rm(PLUGIN2, { recursive: true, force: true })
+  const legacy2 = path.join(PLUGIN2, 'data')
+  await writeAt(path.join(legacy2, 'images', 'x.png'), 'X')
+  await writeAt(path.join(legacy2, 'config.json'), 'LEGACY-CONFIG')
+  await writeAt(path.join(legacy2, 'usage.jsonl'), 'LEGACY-USAGE\n')
+  await writeAt(path.join(DATA2, 'images', 'keep.png'), 'KEEP')   // 目标目录已存在
+
+  clearDataEnv()
+  setEnv('DSH_TOOLKIT_DATA', DATA2)
+  setEnv('IMAGE_GEN_CONFIG', path.join(ROOT, '.selfcheck-image-gen-config.json'))
+
+  const third = migrateModule.migrateLegacyData({ pluginRoot: PLUGIN2, home: CASE_HOME })
+  check(third.errors.length === 0 && third.moved === 1 && third.skipped === 1,
+    `目标已存在时只搬缺的那项（moved=${third.moved}, skipped=${third.skipped}）`)
+  check(await exists(path.join(DATA2, 'images', 'keep.png')) && !(await exists(path.join(DATA2, 'images', 'x.png')))
+    && await exists(path.join(legacy2, 'images', 'x.png')),
+    '目标目录已存在 → 整项跳过，绝不覆盖也不删源')
+  check(await exists(path.join(DATA2, 'usage.jsonl')) && !(await exists(path.join(legacy2, 'usage.jsonl'))),
+    '目标缺失的项照常搬过去')
+  check(await exists(path.join(legacy2, 'config.json')) && !(await exists(path.join(DATA2, 'config.json'))),
+    'IMAGE_GEN_CONFIG 接管时配置文件不迁移（那份数据不归默认目录管）')
+} catch (e) {
+  fail('迁移护栏用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+} finally {
+  for (const [name, value] of savedEnv) setEnv(name, value)
+  for (const dir of [SANDBOX_DATA, DATA2, LEGACY_ROOT]) {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
+  }
 }
 
 console.log()

@@ -21,15 +21,15 @@
 ## 计价（三层合并 + 图片生成按张，自带价目表）
 
 - **内置打底**：`pricing-defaults.mjs` 随插件分发，永远可用。
-- **插件自有价目文件**：`<插件根>/data/token-usage/pricing.json`
+- **插件自有价目文件**：`$DSH_HOME/dsh-toolkit/token-usage/pricing.json`
   （`TOKEN_USAGE_PRICING` 环境变量可改路径）。两层内容，条目带 `source` 区分：
   - `source: 'user'` — 面板里手工添加/修改的价目，**同步永不覆盖**；
   - `source: 'models-dev'` — models.dev 同步写入，下次同步刷新。
   - `deletedModelIds` 删除墓碑：删过的条目（含内置表里的）不会被同步复活。
-- **图片生成（image-gen）按张计费**：`<插件根>/data/config.json` 里配了
+- **图片生成（image-gen）按张计费**：`$DSH_HOME/dsh-toolkit/config.json` 里配了
   `pricePerImage`（美元/张）的生图模型，会作为价目条目出现在计价明细
   （token 单价显示 `—`，按张单价标在显示名旁）；每次生成落一条记录到
-  `<插件根>/data/usage.jsonl`，scan 时合并为伪会话行「图片生成」，
+  `$DSH_HOME/dsh-toolkit/usage.jsonl`，scan 时合并为伪会话行「图片生成」，
   成本 = 当前每张单价 × 张数（与 token 同哲学：当前价 × 历史用量）。
 - **合并优先级**：用户手工 > models.dev 同步 > 内置表；图片生成条目最后覆盖同名。
   文件损坏/缺失只降级内置并标错。
@@ -45,3 +45,6 @@
   `overrides`/`sync`/`used`；`POST` 同一路由 `{action: 'upsert'|'delete'|'sync'}`。
 - 请求侧模型名未命中（精确 → 别名 `MODEL_ALIASES` → 最长前缀）成本仍记 0，
   请求标「未配价」。
+- **数据目录与迁移**：上述文件默认都在 `$DSH_HOME/dsh-toolkit/` 下（`DSH_HOME` 未设时回退 `~/.dsh`，
+  本机即 `~/.dsh/dsh-toolkit/`），可用 `DSH_TOOLKIT_DATA` 整体换到别处；老位置的数据在新目录首次启动时
+  自动迁移一次，详见根 README「一次性迁移」。

@@ -5,13 +5,13 @@
  * 所有模型都走标准 OpenAI Images 接口，没有协议分支、没有厂商预设。
  * `defaultId` 决定文生图 / 图生图 / Agent 实际调用哪一条；目录为空时生成链路会明确报错。
  *
- * 配置文件：`IMAGE_GEN_CONFIG` → 插件目录 data/config.json
+ * 配置文件：`IMAGE_GEN_CONFIG` → 数据目录 config.json（默认 $DSH_HOME/dsh-toolkit/config.json）
  * 密钥解析顺序：配置文件 keys[keyEnv] → DSH 凭据库 → 环境变量。
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-import { CONFIG_FILE } from './paths.js?v=36'
+import { configFile } from './paths.js?v=37'
 
 /** OpenAI Images API 的标准尺寸。 */
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
@@ -29,11 +29,11 @@ function cleanText(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 }
 
-/** 配置文件路径：`IMAGE_GEN_CONFIG` 优先，默认插件目录 data/config.json。 */
+/** 配置文件路径：`IMAGE_GEN_CONFIG` 优先，默认数据目录 config.json。 */
 export function configPath() {
   const override = cleanText(process.env[CONFIG_FILE_ENV])
   if (override !== null) return override
-  return CONFIG_FILE
+  return configFile()
 }
 
 /** baseURL 去尾斜杠；非 http(s) 视为无效。 */

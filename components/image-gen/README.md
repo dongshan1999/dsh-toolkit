@@ -19,7 +19,7 @@
 
 - **文生图**：`prompt` 必填 + `size`（像素尺寸，默认 `1024x1024`）+ `count`（1-4）
 - **图生图 / 编辑**：`image` 数组（本地路径、https URL 或 data URL，≤9 张），prompt 里描述改动要求
-- 返回图片 URL（约 24 小时有效）+ 落盘本地路径（默认插件目录 `data/images/`）
+- 返回图片 URL（约 24 小时有效）+ 落盘本地路径（默认 `$DSH_HOME/dsh-toolkit/images/`）
 - 目录为空、或默认模型没有可用密钥时**快速失败**并给出可操作提示，不触网
 
 ### 侧边栏面板（order 49）
@@ -31,7 +31,7 @@
 
 ### 提示词库
 
-- 库文件：`IMAGE_GEN_LIBRARY` → 插件目录 `data/library.json`
+- 库文件：`IMAGE_GEN_LIBRARY` → `$DSH_HOME/dsh-toolkit/library.json`
 - 每条记录：`{ id, title, text, size, images: [图片名…], createdAt, updatedAt }`
 - `images` 记录该条生成过的图片名，按名从统一目录回显；「加为风格」「替换主体」直接填入右栏表单
 
@@ -39,10 +39,12 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `paths.js` | 统一数据目录：插件 `data/` 下 images / favorites / config.json / library.json（纯常量） |
+| `paths.js` | 统一数据目录：`$DSH_HOME/dsh-toolkit` 下 images / favorites / config.json / library.json / usage.jsonl / token-usage（按调用时的环境变量解析，不缓存） |
+| `migrate.js` | 一次性迁移：老位置 → `$DSH_HOME/dsh-toolkit`（`.migrated` 标记 + `.migration-backup-<时间戳>.json` 清单） |
 | `config.js` | 模型目录读写 + 密钥解析与来源标注（纯 helper，无路由） |
 | `generate.js` | 生成链路：generateOnce / saveImage / generateMany / resolveReferenceImage（纯 helper） |
 | `library.js` | 提示词库读写 / 增删改 / 图片归档（纯 helper，无路由） |
+| `usage.js` | 生成计费记录读写（`IMAGE_GEN_USAGE` → 数据目录 `usage.jsonl`） |
 | `host.js` | 注册 `generate_image` 工具（用 config + generate） |
 | `gallery-page.js` | `GET /api/image-gen`（分页 + 状态）、`GET /api/image-gen/file?name=` |
 | `gallery-actions.js` | `POST /api/image-gen/delete` |
@@ -57,19 +59,27 @@
 
 ## 配置与数据
 
-模型目录统一在面板「设置」Tab 管理，落盘到本机配置文件（权限 0600）：
+模型目录统一在面板「设置」Tab 管理，落盘到本机配置文件（权限 0600）。`$DSH_HOME` 先读环境变量
+`DSH_HOME`（空白字符串视为未设，值支持 `~` 展开），未设则回退 `~/.dsh`，本机默认数据目录即
+`~/.dsh/dsh-toolkit/`：
 
 | 用途 | 环境变量 | 默认路径 |
 | --- | --- | --- |
-| 生成图目录 | `IMAGE_GEN_DIR` | `<插件根>/data/images` |
-| 收藏目录 | 随生成图目录 | `<插件根>/data/favorites` |
-| 模型目录 | `IMAGE_GEN_CONFIG` | `<插件根>/data/config.json` |
-| 提示词库 | `IMAGE_GEN_LIBRARY` | `<插件根>/data/library.json` |
-| 花费记录 | `IMAGE_GEN_USAGE` | `<插件根>/data/usage.jsonl` |
+| 数据目录 | `DSH_TOOLKIT_DATA` | `$DSH_HOME/dsh-toolkit` |
+| 生成图目录 | `IMAGE_GEN_DIR` | `$DSH_HOME/dsh-toolkit/images` |
+| 收藏目录 | 随生成图目录 | `$DSH_HOME/dsh-toolkit/favorites` |
+| 模型目录 | `IMAGE_GEN_CONFIG` | `$DSH_HOME/dsh-toolkit/config.json` |
+| 提示词库 | `IMAGE_GEN_LIBRARY` | `$DSH_HOME/dsh-toolkit/library.json` |
+| 花费记录 | `IMAGE_GEN_USAGE` | `$DSH_HOME/dsh-toolkit/usage.jsonl` |
+
+- **一次性迁移**：`$DSH_HOME/dsh-toolkit/.migrated` 标记不存在时，首次启动自动把老位置的数据搬过来一次
+  （图片 / 收藏 / 配置 / 库文件 / 花费记录分别按顺序取第一个存在的源）；目标已存在则跳过、绝不覆盖，
+  失败保留原文件且不写标记，下次启动重试；对应的环境变量已覆盖时该项不迁移。迁移源与清单细节见根 README。
+- 插件目录的 `data/` 不再是运行时数据目录，仅作为迁移来源；`.gitignore` 仍忽略它（老目录可能还留着空壳）。
 
 - **每张单价**：模型条目可选 `pricePerImage`（美元/张，模型编辑卡里填）。
   配了价的模型会出现在「Token 用量 → 计价明细」（按张展示），每次成功生成
-  记一条到 `data/usage.jsonl`，由 token-usage 组件按「当前单价 × 张数」
+  记一条到 `$DSH_HOME/dsh-toolkit/usage.jsonl`，由 token-usage 组件按「当前单价 × 张数」
   合并进成本统计（伪会话行「图片生成」）；没配价只记次数，成本记 0 并标「未配价」。
 
 - **密钥解析顺序**：该条目的 `keyEnv`（默认 `CUSTOM_API_KEY`）→ 配置文件 `keys[keyEnv]` →
