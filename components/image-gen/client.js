@@ -5,7 +5,9 @@ window.__ModuleLoader__.load({
     const React = require('react')
 
     const CSS = [
-      '.ag-root{display:flex;flex-direction:column;gap:12px;padding:16px 18px;overflow:auto;height:100%;min-height:0;box-sizing:border-box;background:var(--dsw-alias-bg-layer-0)}',
+      // 面板外壳：给灯箱一个定位参考与裁剪边界，灯箱不再盖住 DSH 左侧边栏。
+      '.ag-shell{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;box-sizing:border-box;container-type:inline-size;container-name:agshell}',
+      '.ag-root{display:flex;flex-direction:column;gap:12px;padding:16px 18px;overflow:auto;flex:1 1 auto;min-height:0;box-sizing:border-box;background:var(--dsw-alias-bg-layer-0)}',
       '/* 模型目录：与 DSH 设置页同风格（参考 ui-settings-models：卡片 + 圆点 + grid 行 + 虚线添加钮） */',
       '.agx-card{border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:12px;display:flex;flex-direction:column;gap:10px;padding:12px 14px}',
       '.agx-head{display:flex;align-items:center;gap:8px;min-width:0}',
@@ -41,6 +43,29 @@ window.__ModuleLoader__.load({
       '.agx-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:10px;padding:10px 14px}',
       '.agx-item-name{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:14px;color:var(--dsw-alias-label-primary);flex-wrap:wrap}',
       '.agx-item-actions{display:inline-flex;gap:6px;align-items:center}',
+      '.agx-model{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:10px;padding:9px 12px}',
+      '.agx-model-name{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:14px;color:var(--dsw-alias-label-primary);flex-wrap:wrap}',
+      '.agx-model-meta{min-width:0;font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,ui-monospace,monospace);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.agx-model .agx-item-actions{grid-column:2;grid-row:1 / span 2}',
+      '.agx-groups{display:flex;flex-direction:column;gap:8px}',
+      '.agx-group{border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}',
+      '.agx-group-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.agx-group-name{font-size:14px;font-weight:500;color:var(--dsw-alias-label-primary);flex:none}',
+      '.agx-group-url{font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,ui-monospace,monospace);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 150px}',
+      '.agx-group .agx-item-actions{margin-left:auto;flex:none}',
+      '.agx-group .agx-model{background:none}',
+      '.agx-group-toggle{display:inline-flex;align-items:center;gap:6px;border:none;background:none;padding:0;cursor:pointer;font-family:inherit;color:inherit}',
+      '.agx-caret{font-size:10px;color:var(--dsw-alias-label-tertiary);width:10px;text-align:center}',
+      '.agx-group-count{font-size:11px;color:var(--dsw-alias-label-tertiary);flex:none}',
+      '.agx-add-sm{height:30px;min-width:0;font-size:12px;border-radius:8px;margin-top:8px}',
+      '.agx-picker{border-top:.5px solid var(--dsw-alias-border-l2);padding-top:10px;display:flex;flex-direction:column;gap:8px}',
+      '.agx-manual{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}',
+      '.agx-pick:disabled{opacity:.55;cursor:default}',
+      '.agx-pick-added{border-style:dashed}',
+      '.agx-picks{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow:auto}',
+      '.agx-pick{border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:7px;height:28px;padding:0 10px;font-size:12px;color:var(--dsw-alias-label-primary);cursor:pointer;font-family:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.agx-pick:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.agx-pick-on{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-base);font-weight:600}',
       '.agx-btn-edit{border:.5px solid var(--dsw-alias-border-l3);background:none;border-radius:7px;height:28px;padding:0 12px;font-size:12px;color:var(--dsw-alias-label-primary);cursor:pointer;font-family:inherit;white-space:nowrap}',
       '.agx-btn-edit:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
       '.agx-btn-edit:disabled{opacity:.45;cursor:not-allowed}',
@@ -90,6 +115,21 @@ window.__ModuleLoader__.load({
       '.ag-star{position:absolute;top:6px;left:6px;border:0;border-radius:6px;padding:3px 6px;font-size:13px;cursor:pointer;background:#000c;color:#ffd166;line-height:1}',
       '.ag-star.off{color:#fff;opacity:.7}',
       '.ag-caption{font-size:10px;color:var(--dsw-alias-label-secondary);word-break:break-all;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.ag-caption.ag-dim{opacity:.55;font-size:10px}',
+      '.ag-tile-prompt{margin-top:5px;font-size:10px;line-height:1.45;color:var(--dsw-alias-label-secondary);word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}',
+      '.ag-tile-prompt.ag-tile-prompt-3{-webkit-line-clamp:3}',
+      '.ag-tile-prompt.ag-noprompt{opacity:.45;font-style:italic}',
+      '.ag-prompt{font-size:11px;line-height:1.5;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;word-break:break-word;border-left:2px solid var(--dsw-alias-border-l2);padding-left:7px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}',
+      '.ag-prompt-meta{font-size:10px;color:var(--dsw-alias-label-secondary);opacity:.75;margin-bottom:2px;display:block}',
+      '.ag-lb-para{margin:0;font-size:12px;line-height:1.72;white-space:pre-wrap;word-break:break-word;color:var(--dsw-alias-label-primary);opacity:.92}',
+      '.ag-lb-segs{display:flex;flex-direction:column;gap:11px}',
+      '.ag-lb-seg{display:flex;flex-direction:column;gap:3px;padding-left:9px;border-left:2px solid var(--dsw-alias-border-l2)}',
+      '.ag-lb-seg:first-child{border-left-color:var(--dsw-alias-brand-primary)}',
+      '.ag-lb-seg-label{font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--dsw-alias-label-secondary);text-transform:none}',
+      '.ag-lb-seg-body{margin:0;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word}',
+      '.ag-lb-meta{font-size:11px;line-height:1.6;color:var(--dsw-alias-label-secondary)}',
+      '.ag-lb-facts{display:flex;flex-wrap:wrap;gap:6px;padding-top:9px;border-top:1px solid var(--dsw-alias-border-l1)}',
+      '.ag-lb-fact{font-size:10px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:2px 7px;line-height:1.6}',
       '.ag-empty{padding:18px;text-align:center;color:var(--dsw-alias-label-secondary);font-size:12px}',
       '.ag-field{display:flex;flex-direction:column;gap:5px}',
       '.ag-field label,.ag-label{font-size:12px;color:var(--dsw-alias-label-secondary)}',
@@ -143,14 +183,26 @@ window.__ModuleLoader__.load({
       '.ag-lib-actions{display:flex;gap:6px;flex-wrap:wrap}',
       '.ag-lib-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}',
       '.ag-lib-imgs .ag-thumb{border-radius:6px}',
-      '.ag-glyph{border-radius:5px;background:var(--dsw-alias-brand-primary);color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center}',
-      '.ag-lb{position:fixed;inset:0;z-index:80;background:#000c;display:flex;align-items:center;justify-content:center;padding:24px}',
-      '.ag-lb-img{max-width:min(92vw,1400px);max-height:82vh;object-fit:contain;border-radius:10px;box-shadow:0 16px 60px #0008}',
-      '.ag-lb-bar{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}',
-      '.ag-lb-nav{position:absolute;top:50%;transform:translateY(-50%);border:0;background:#000a;color:#fff;width:44px;height:44px;border-radius:99px;font-size:22px;cursor:pointer}',
+      '.ag-glyph{border-radius:5px;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:600;display:flex;align-items:center;justify-content:center}',
+      // 灯箱：左边看图、右边独立一栏放提示词，提示词不再压在画面上挡图。
+      '.ag-lb{position:absolute;inset:0;z-index:80;background:#000d;display:flex;align-items:stretch;justify-content:center}',
+      '.ag-lb-stage{position:relative;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:28px}',
+      '.ag-lb-img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;box-shadow:0 16px 60px #0008}',
+      '.ag-lb-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:8px;flex-wrap:wrap}',
+      '.ag-lb-nav{position:absolute;top:50%;transform:translateY(-50%);border:0;background:#000a;color:#fff;width:44px;height:44px;border-radius:99px;font-size:22px;cursor:pointer;z-index:2}',
       '.ag-lb-nav.prev{left:18px}',
       '.ag-lb-nav.next{right:18px}',
-      '.ag-lb-name{position:absolute;top:18px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;opacity:.85;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.ag-lb-name{position:absolute;top:14px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;opacity:.8;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.ag-lb-side{flex:0 0 clamp(220px,30%,360px);width:clamp(220px,30%,360px);display:flex;flex-direction:column;min-height:0;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-primary)}',
+      '.ag-lb-side.ag-side-off{flex:0 0 40px;width:40px}',
+      '.ag-lb-side-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--dsw-alias-border-l1)}',
+      '.ag-lb-side-title{font-size:12px;font-weight:600;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.ag-lb-side-body{flex:1 1 auto;min-height:0;overflow:auto;padding:13px;display:flex;flex-direction:column;gap:10px}',
+      '.ag-lb-side-empty{font-size:12px;color:var(--dsw-alias-label-secondary);font-style:italic;line-height:1.6}',
+      '.ag-lb-toggle{border:0;background:transparent;color:inherit;cursor:pointer;font-size:13px;opacity:.6;padding:2px 6px;border-radius:5px;line-height:1}',
+      '.ag-lb-toggle:hover{opacity:1;background:var(--dsw-alias-bg-layer-2)}',
+      '.ag-lb-spine{writing-mode:vertical-rl;letter-spacing:.1em;font-size:12px;color:var(--dsw-alias-label-secondary);align-self:center;padding:14px 0;user-select:none}',
+      '@container agshell (max-width:820px){.ag-lb{flex-direction:column}.ag-lb-stage{padding:14px}.ag-lb-side{flex:0 0 auto;width:100%;max-height:44%;border-left:0;border-top:1px solid var(--dsw-alias-border-l1)}.ag-lb-side.ag-side-off{flex:0 0 auto;width:100%;max-height:38px}}',
     ].join('')
 
     const PANEL_KEY = 'image-gen'
@@ -233,6 +285,49 @@ window.__ModuleLoader__.load({
         parts.push(/^(不要|避免|avoid)/i.test(negative) ? negative : '不要：' + negative)
       }
       return parts.join('\n\n')
+    }
+
+    /**
+     * 把提示词拆成可读的分段：五段式组装出来的提示词用空行分隔，
+     * 逐段带上小标签，长提示词在灯箱里才不是一整片文字。
+     * 认不出的段落（例如工具直接传入的英文整段）不硬套标签，原样显示。
+     */
+    const SEGMENT_LABELS = [
+      { test: /^(构图与视角|构图|视角)\s*[：:]/, label: '构图与视角' },
+      { test: /^(光线与氛围|光线|氛围|光影)\s*[：:]/, label: '光线与氛围' },
+      { test: /^(不要|避免|negative|avoid)\s*[：:]/i, label: '负面' },
+    ]
+
+    function splitPromptSegments(text) {
+      const raw = typeof text === 'string' ? text.trim() : ''
+      if (raw === '') return []
+      const blocks = raw.split(/\n\s*\n/).map((block) => block.trim()).filter((block) => block !== '')
+      return blocks.map((body, index) => {
+        for (const rule of SEGMENT_LABELS) {
+          if (rule.test.test(body)) return { label: rule.label, body }
+        }
+        // 第一段是主体；其余无标签段落是叠加的风格片段，不硬套标签。
+        return { label: index === 0 ? '主体' : '', body }
+      })
+    }
+
+    /**
+     * 图片旁注：把生成这张图时用的提示词显示在图片旁边。
+     * source === 'library' 表示老图按提示词库反查出来的（当年没记逐图提示词）。
+     */
+    function PromptNote({ prompt, source, clamp }) {
+      const text = typeof prompt === 'string' ? prompt.trim() : ''
+      if (text === '') {
+        return React.createElement('div', { className: 'ag-tile-prompt ag-noprompt', title: '这张图没有提示词记录' }, '无提示词记录')
+      }
+      return React.createElement('div', {
+        className: clamp === 2 ? 'ag-tile-prompt' : 'ag-prompt',
+        title: text,
+      },
+      source === 'library'
+        ? React.createElement('span', { className: 'ag-prompt-meta' }, '提示词（按提示词库反查）')
+        : null,
+      text)
     }
 
     function GenerationClock({ startedAt, count, model }) {
@@ -326,8 +421,19 @@ window.__ModuleLoader__.load({
           return { state, pending, refresh: () => load(true), loadMore: () => load(false) }
         }
 
+        /** 复制到剪贴板；环境不支持（自检 / 非安全上下文）时静默失败，不弹错。 */
+        function copyText(text) {
+          try {
+            if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+              navigator.clipboard.writeText(text).catch(() => {})
+            }
+          } catch { /* 复制失败不影响看图 */ }
+        }
+
         function Lightbox({ files, index, srcOf, starred, onClose, onIndex, onDelete, onStar }) {
           const file = files[index]
+          // 提示词栏默认展开；图很长时用户可收起，把舞台让给画面。
+          const [sideOpen, setSideOpen] = React.useState(true)
           React.useEffect(() => {
             const onKey = (event) => {
               if (event.key === 'Escape') onClose()
@@ -339,16 +445,65 @@ window.__ModuleLoader__.load({
           }, [index, files.length, onClose, onIndex])
           if (!file) return null
           const isStar = starred.has(file.name)
+          const promptText = typeof file.prompt === 'string' ? file.prompt.trim() : ''
+          const side = sideOpen
+            ? React.createElement('div', { className: 'ag-lb-side', onClick: (e) => e.stopPropagation() },
+              React.createElement('div', { className: 'ag-lb-side-head' },
+                React.createElement('span', { className: 'ag-lb-side-title' }, '提示词'),
+                promptText !== ''
+                  ? React.createElement('button', {
+                      className: 'ag-lb-toggle',
+                      title: '复制提示词',
+                      onClick: () => copyText(promptText),
+                    }, '复制')
+                  : null,
+                React.createElement('button', {
+                  className: 'ag-lb-toggle',
+                  title: '收起提示词栏',
+                  onClick: () => setSideOpen(false),
+                }, '›')),
+              React.createElement('div', { className: 'ag-lb-side-body' },
+                promptText !== ''
+                  // 长提示词按空行拆段，每段给个小标签，不是一整片文字。
+                  ? React.createElement('div', { className: 'ag-lb-segs' },
+                    splitPromptSegments(promptText).map((seg, i) => React.createElement('div', { className: 'ag-lb-seg', key: i },
+                      seg.label !== ''
+                        ? React.createElement('div', { className: 'ag-lb-seg-label' }, seg.label)
+                        : null,
+                      React.createElement('p', { className: 'ag-lb-seg-body' }, seg.body))))
+                  : React.createElement('div', { className: 'ag-lb-side-empty' }, '这张图没有提示词记录。'),
+                file.promptSource === 'library'
+                  ? React.createElement('div', { className: 'ag-lb-meta' }, '这张老图没有逐图记录，提示词是按提示词库里的归档反查出来的。')
+                  : null,
+                file.promptTitle
+                  ? React.createElement('div', { className: 'ag-lb-meta' }, '来自：' + file.promptTitle)
+                  : null,
+                // 事实条：模型 / 尺寸 / 文件名等，弱化放在底部，不抢提示词的注意力。
+                React.createElement('div', { className: 'ag-lb-facts' },
+                  file.promptModel ? React.createElement('span', { className: 'ag-lb-fact' }, file.promptModel) : null,
+                  file.promptSize ? React.createElement('span', { className: 'ag-lb-fact' }, file.promptSize) : null,
+                  React.createElement('span', { className: 'ag-lb-fact' }, file.name))))
+            : React.createElement('div', { className: 'ag-lb-side ag-side-off', onClick: (e) => e.stopPropagation() },
+              React.createElement('button', {
+                className: 'ag-lb-toggle',
+                title: '展开提示词栏',
+                onClick: () => setSideOpen(true),
+                style: { margin: '8px auto 0' },
+              }, '‹'),
+              React.createElement('div', { className: 'ag-lb-spine' }, '提示词'))
+
           return React.createElement('div', { className: 'ag-lb', onClick: onClose },
-            React.createElement('div', { className: 'ag-lb-name' }, file.name + '  ·  ' + (index + 1) + '/' + files.length),
-            React.createElement('button', { className: 'ag-lb-nav prev', onClick: (e) => { e.stopPropagation(); onIndex((index + files.length - 1) % files.length) } }, '‹'),
-            React.createElement('img', { className: 'ag-lb-img', src: srcOf(file.name), alt: file.name, onClick: (e) => e.stopPropagation() }),
-            React.createElement('button', { className: 'ag-lb-nav next', onClick: (e) => { e.stopPropagation(); onIndex((index + 1) % files.length) } }, '›'),
-            React.createElement('div', { className: 'ag-lb-bar', onClick: (e) => e.stopPropagation() },
-              React.createElement('button', { className: 'ag-btn', onClick: () => onStar(file.name) }, isStar ? '★ 已收藏' : '☆ 收藏'),
-              React.createElement('a', { className: 'ag-btn', href: srcOf(file.name), download: file.name }, '下载'),
-              React.createElement('button', { className: 'ag-btn ag-btn-danger', onClick: () => onDelete(file.name) }, '删除'),
-              React.createElement('button', { className: 'ag-btn', onClick: onClose }, '关闭')))
+            React.createElement('div', { className: 'ag-lb-stage', onClick: (e) => e.stopPropagation() },
+              React.createElement('div', { className: 'ag-lb-name' }, file.name + '  ·  ' + (index + 1) + '/' + files.length),
+              React.createElement('button', { className: 'ag-lb-nav prev', onClick: () => onIndex((index + files.length - 1) % files.length) }, '‹'),
+              React.createElement('img', { className: 'ag-lb-img', src: srcOf(file.name), alt: file.name }),
+              React.createElement('button', { className: 'ag-lb-nav next', onClick: () => onIndex((index + 1) % files.length) }, '›'),
+              React.createElement('div', { className: 'ag-lb-bar' },
+                React.createElement('button', { className: 'ag-btn', onClick: () => onStar(file.name) }, isStar ? '★ 已收藏' : '☆ 收藏'),
+                React.createElement('a', { className: 'ag-btn', href: srcOf(file.name), download: file.name }, '下载'),
+                React.createElement('button', { className: 'ag-btn ag-btn-danger', onClick: () => onDelete(file.name) }, '删除'),
+                React.createElement('button', { className: 'ag-btn', onClick: onClose }, '关闭'))),
+            side)
         }
 
         // 纯渲染函数（不持 hook）：右栏生成表单
@@ -469,14 +624,18 @@ window.__ModuleLoader__.load({
           const msgNode = gen.error
             ? React.createElement('div', { className: 'ag-msg ag-msg-err' }, gen.error)
             : null
+          // 优先用后端回传的「真正发给上游那份提示词」，生成完再改表单也不会串。
+          const resultPrompt = gen.result && typeof gen.result.prompt === 'string' ? gen.result.prompt.trim() : ''
           const resultNode = gen.result
             ? React.createElement('div', { className: 'ag-field' },
               React.createElement('div', { className: 'ag-msg ag-msg-ok' }, '已生成 ' + gen.result.count + ' 张' + (gen.result.partial ? '（' + gen.result.partial + '）' : '')),
               React.createElement('div', { className: 'ag-result' },
                 gen.result.images.map((img) => React.createElement('div', { key: img.name, className: 'ag-card' },
                   React.createElement('img', { className: 'ag-thumb', src: srcRecent(img.name), alt: img.name }),
-                  React.createElement('div', { className: 'ag-caption' }, img.name)))),
-              React.createElement('div', { className: 'ag-note' }, '已保存到数据目录 dsh-toolkit/images/（环境变量 IMAGE_GEN_DIR 可改；点击左侧「最近生成」查看）'))
+                  // 刚生成的图：提示词就是这次发出去的那份，直接标在图片下面。
+                  React.createElement(PromptNote, { prompt: resultPrompt !== '' ? resultPrompt : img.prompt, source: resultPrompt !== '' ? null : img.promptSource }),
+                  React.createElement('div', { className: 'ag-caption ag-dim', title: img.name }, img.name)))),
+              React.createElement('div', { className: 'ag-note' }, '已保存到数据目录 dsh-toolkit/image-gen/images/（环境变量 IMAGE_GEN_DIR 可改；点击左侧「最近生成」查看）'))
             : null
 
           const catalogEntries = catalog && Array.isArray(catalog.entries) ? catalog.entries : []
@@ -523,190 +682,228 @@ window.__ModuleLoader__.load({
         }
 
         // 纯渲染函数（不持 hook）：右栏设置表单
+        // 布局：默认模型 → 可折叠的组卡片（组内模型逐条可编辑/删除）→「+ 添加模型组」。
+        // 「加模型」与「编辑组」是同一个表单：组名 / API Key / 链接 → 获取模型 → 勾选 → 保存。
         function SettingsForm(props) {
-          const { settings, draft, setDraft, onTest, test, onReload, models, onLoadModels, settingsError, entryTest, onTestEntry, addOpen, onToggleAdd, addMode, onSetAddMode, editing, editDraft, setEditDraft, onEditModel, onSaveEdit } = props
-          const field = (key) => (event) => setDraft({ ...draft, [key]: event.target.value })
+          const { settings, flow, flowDraft, setFlowDraft, models, test, settingsError, openGroups, act } = props
+          const field = (key) => (event) => setFlowDraft({ ...flowDraft, [key]: event.target.value })
           if (settings === null) {
             return React.createElement('div', { className: 'ag-card' },
               React.createElement('h3', { className: 'ag-section' }, '生图模型接入'),
               settingsError
                 ? React.createElement('div', { className: 'ag-msg ag-msg-err' }, '设置读取失败：' + settingsError)
                 : React.createElement('div', { className: 'ag-empty' }, '正在读取设置…'),
-              React.createElement('button', { className: 'ag-btn', onClick: onReload }, '重新读取'))
+              React.createElement('button', { className: 'ag-btn', onClick: act.reload }, '重新读取'))
           }
-          const statusRow = React.createElement('div', { className: 'ag-stats' },
-            React.createElement('div', { className: 'ag-stat' },
-              React.createElement('span', { className: 'ag-stat-label' }, 'API Key'),
-              React.createElement('span', { className: 'ag-stat-value ' + (settings.hasKey ? 'ag-ok' : '') }, settings.hasKey ? '已配置' : '未配置')),
-            React.createElement('div', { className: 'ag-stat' },
-              React.createElement('span', { className: 'ag-stat-label' }, '接口地址来源'),
-              React.createElement('span', { className: 'ag-stat-value', style: { fontSize: 12 } }, settings.baseURLSource)),
-            React.createElement('div', { className: 'ag-stat' },
-              React.createElement('span', { className: 'ag-stat-label' }, '模型来源'),
-              React.createElement('span', { className: 'ag-stat-value', style: { fontSize: 12 } }, settings.modelSource)))
           const catalog = settings.catalog && Array.isArray(settings.catalog.entries) ? settings.catalog : null
-          if (catalog) {
-            const groups = []
-            for (const entry of catalog.entries) {
-              let bucket = groups.find((item) => item.id === entry.group)
-              if (!bucket) {
-                bucket = { id: entry.group, label: entry.groupLabel || entry.group, entries: [] }
-                groups.push(bucket)
-              }
-              bucket.entries.push(entry)
-            }
-            // 编辑卡：与该行同位置展开（官方 editor 风格：标题 + 路由 + 字段 + 右对齐操作）。
-            function editCardNode(entry) {
-              const entryTesting = entryTest != null && entryTest.busy && entryTest.id === entry.id
-              return React.createElement('div', { key: entry.id, className: 'agx-editor' },
-                React.createElement('div', { className: 'agx-editor-header' },
-                  React.createElement('span', { className: 'agx-editor-title' }, '编辑 · ' + entry.name),
-                  React.createElement('span', { className: 'agx-editor-route' }, (entry.groupLabel || entry.group) + ' · ' + entry.model)),
-                React.createElement('div', { className: 'agx-editor-grid' },
-                  React.createElement('div', { className: 'ag-field' },
-                    React.createElement('label', null, '显示名'),
-                    React.createElement('input', { className: 'ag-input', value: editDraft.name || '', onChange: (e) => setEditDraft({ ...editDraft, name: e.target.value }) })),
-                  React.createElement('div', { className: 'ag-field' },
-                    React.createElement('label', null, '模型 id'),
-                    React.createElement('input', { className: 'ag-input', value: editDraft.model || '', onChange: (e) => setEditDraft({ ...editDraft, model: e.target.value }) })),
-                  React.createElement('div', { className: 'ag-field' },
-                    React.createElement('label', null, '分组（不可改）'),
-                    React.createElement('input', { className: 'ag-input', value: entry.groupLabel || entry.group, disabled: true }))),
-                React.createElement('div', { className: 'ag-field' },
-                  React.createElement('label', null, 'API 地址'),
-                  React.createElement('input', { className: 'ag-input', value: editDraft.baseURL || '', onChange: (e) => setEditDraft({ ...editDraft, baseURL: e.target.value }) })),
-                React.createElement('div', { className: 'ag-field' },
-                  React.createElement('label', null, 'API 密钥（留空不修改）'),
-                  React.createElement('input', {
-                    className: 'ag-input', type: 'password', value: editDraft.key || '',
-                    placeholder: entry.hasKey === false ? '未配置，填入后保存' : '已配置，留空不修改',
-                    onChange: (e) => setEditDraft({ ...editDraft, key: e.target.value }),
-                  })),
-                React.createElement('div', { className: 'ag-field' },
-                  React.createElement('label', null, '每张单价（美元/张，选填；填了才计入 Token 面板花费）'),
-                  React.createElement('input', {
-                    className: 'ag-input', inputMode: 'decimal', value: editDraft.pricePerImage || '',
-                    placeholder: '例如 0.04', onChange: (e) => setEditDraft({ ...editDraft, pricePerImage: e.target.value }),
-                  })),
-                entryTest != null && entryTest.id === entry.id && entryTest.message
-                  ? React.createElement('div', { className: 'ag-msg ' + (entryTest.ok ? 'ag-msg-ok' : 'ag-msg-err') }, entryTest.message)
-                  : null,
-                React.createElement('div', { className: 'agx-actions' },
-                  React.createElement('button', { className: 'agx-btn-text', style: { marginRight: 'auto' }, onClick: () => props.onRemoveModel && props.onRemoveModel(entry) }, '删除'),
-                  React.createElement('button', { className: 'agx-btn-edit', disabled: entryTest != null && entryTest.busy, onClick: () => props.onTestEntry && props.onTestEntry(entry.id) }, entryTesting ? '测试中…' : '测试连通性'),
-                  entry.isDefault ? null : React.createElement('button', { className: 'agx-btn-edit', onClick: () => props.onSetDefault && props.onSetDefault(entry.id) }, '设为默认'),
-                  React.createElement('button', { className: 'ag-btn', onClick: () => props.onEditModel && props.onEditModel(null) }, '取消'),
-                  React.createElement('button', { className: 'ag-btn ag-btn-primary', onClick: () => props.onSaveEdit && props.onSaveEdit(entry) }, '保存')))
-            }
+          if (!catalog) {
+            // 兜底：正常路径下 configView 一定带 catalog；异常时给明确提示而不是空白。
+            return React.createElement('div', { className: 'ag-card' },
+              React.createElement('div', { className: 'ag-empty' }, '设置读取异常：未拿到模型目录。点上方「刷新」重试。'))
+          }
+          const providers = Array.isArray(settings.providers) ? settings.providers : []
+          const entries = catalog.entries
+          const picks = flow.picks || {}
+          const pickedList = Object.keys(picks).filter((key) => picks[key] === true)
+          const fetched = models != null && Array.isArray(models.items) ? models.items : null
+          const addedSet = new Set(models != null && Array.isArray(models.added) ? models.added : [])
+          // 折叠态：手动开合记在 openGroups；没记过的按「单组默认展开、多组默认收起」。
+          const isOpen = (id) => {
+            const stored = openGroups != null ? openGroups[id] : undefined
+            return stored === undefined ? providers.length <= 1 : stored === true
+          }
 
-            // 单条模型：收起为单行卡片（名称+标签+密钥圆点 | 测试/编辑/删除）；编辑时该行整体变成编辑卡。
-            function modelItemNode(entry) {
-              if (editing === entry.id) return editCardNode(entry)
-              const entryTesting = entryTest != null && entryTest.busy && entryTest.id === entry.id
-              const isCustom = entry.builtin !== true
-              return React.createElement('div', { key: entry.id, className: 'agx-item' },
-                React.createElement('div', { className: 'agx-item-name' },
-                  React.createElement('span', null, entry.name),
-                  entry.isDefault ? React.createElement('span', { className: 'agx-tag agx-tag-ok' }, '默认') : null,
-                  isCustom ? React.createElement('span', { className: 'agx-tag' }, '自定义') : null,
-                  React.createElement('span', {
-                    className: 'agx-dot ' + (entry.hasKey === false ? 'agx-dot-miss' : 'agx-dot-ok'),
-                    title: entry.hasKey === false ? 'API 密钥缺失（' + (entry.keyEnv || '') + '）' : 'API 密钥已配置',
-                  }),
-                  entry.hasKey === false ? React.createElement('span', { className: 'agx-tag agx-tag-miss' }, '未配置 ' + (entry.keyEnv || 'Key')) : null),
+          // 勾选区：用表单里的链接与 Key 拉列表，点选要加进这个组的模型（已在该组里的置灰）。
+          function pickerNode(saveLabel, onSave, leftAction) {
+            const picked = pickedList.length
+            return React.createElement('div', { className: 'agx-picker' },
+              React.createElement('div', { className: 'agx-fetch' },
+                React.createElement('label', { className: 'ag-label' }, '可用模型'),
                 React.createElement('div', { className: 'agx-item-actions' },
                   React.createElement('button', {
-                    className: 'agx-btn-edit',
-                    disabled: entryTest != null && entryTest.busy,
-                    title: '只测这一条的连通性（打 /models，不扣费）',
-                    onClick: () => props.onTestEntry && props.onTestEntry(entry.id),
-                  }, entryTesting ? '测试中…' : '测试'),
-                  React.createElement('button', { className: 'agx-btn-edit', onClick: () => props.onEditModel && props.onEditModel(entry) }, '编辑'),
-                  React.createElement('button', { className: 'agx-btn-text', onClick: () => props.onRemoveModel && props.onRemoveModel(entry) }, '删除')))
-            }
-            // 预设分组（除「自定义」外）为空时没有「按分组添加」这条路径，直接走自定义表单。
-            const presetGroups = Array.isArray(catalog.groups) ? catalog.groups.filter((group) => group.id !== 'custom') : []
-            const mode = addMode === 'group' && presetGroups.length === 0 ? 'custom' : addMode
-            return React.createElement('div', { className: 'ag-card' },
-              React.createElement('h3', { className: 'ag-section' }, '生图模型'),
-              settings.empty === true
-                ? React.createElement('div', { className: 'agx-hint' }, '模型目录为空：用下方「+ 添加模型」加一个模型（接口地址 + 模型 id）。')
-                : null,
+                    className: 'agx-link', onClick: () => act.loadModels(), disabled: models != null && models.busy,
+                  }, models != null && models.busy ? '正在询问提供商…' : (fetched === null ? '获取模型' : '重新获取')),
+                  fetched !== null && fetched.length > 0
+                    ? React.createElement('button', { className: 'agx-link', onClick: () => act.pickAll(fetched, true) }, '全选')
+                    : null,
+                  picked > 0 ? React.createElement('button', { className: 'agx-link', onClick: () => act.pickAll(fetched || [], false) }, '清空') : null)),
+              models != null && models.error ? React.createElement('div', { className: 'ag-msg ag-msg-err' }, models.error) : null,
+              models != null && !models.error && models.message ? React.createElement('div', { className: 'agx-hint' }, models.message) : null,
+              fetched !== null && fetched.length > 0
+                ? React.createElement('div', { className: 'agx-picks' },
+                  fetched.map((id) => {
+                    const already = addedSet.has(id)
+                    const on = already || picks[id] === true
+                    return React.createElement('button', {
+                      key: id,
+                      disabled: already,
+                      className: 'agx-pick' + (on ? ' agx-pick-on' : '') + (already ? ' agx-pick-added' : ''),
+                      title: already ? '已在该组里' : (on ? '已勾选，再点取消' : '点击勾选'),
+                      onClick: () => act.togglePick(id),
+                    }, id)
+                  }))
+                : fetched !== null
+                  ? React.createElement('div', { className: 'agx-hint' }, '没识别到生图模型，可手填 id')
+                  : React.createElement('div', { className: 'agx-hint' }, '点「获取模型」拉取列表'),
+              React.createElement('div', { className: 'agx-manual' },
+                React.createElement('input', {
+                  className: 'ag-input', value: flowDraft.model || '',
+                  placeholder: '手填模型 id', onChange: field('model'),
+                }),
+                React.createElement('button', {
+                  className: 'agx-btn-edit',
+                  disabled: String(flowDraft.model || '').trim() === '',
+                  onClick: () => act.addManual(),
+                }, '加入')),
+              React.createElement('div', { className: 'agx-actions' },
+                leftAction || null,
+                React.createElement('button', { className: 'ag-btn', onClick: () => act.close() }, '取消'),
+                React.createElement('button', {
+                  className: 'ag-btn ag-btn-primary', onClick: onSave,
+                }, saveLabel + (picked > 0 ? '（' + picked + ' 个）' : ''))))
+          }
+
+          // 组表单：新建组、改组的名字 / 链接 / 密钥、给组补模型，都在这里。
+          function groupFormNode(provider) {
+            const creating = provider === null
+            return React.createElement('div', { className: 'agx-editor' },
+              React.createElement('div', { className: 'agx-editor-header' },
+                React.createElement('span', { className: 'agx-editor-title' }, creating ? '添加模型组' : '编辑模型组 · ' + provider.name)),
+              React.createElement('div', { className: 'agx-editor-grid' },
+                React.createElement('div', { className: 'ag-field' },
+                  React.createElement('label', null, '组名'),
+                  React.createElement('input', { className: 'ag-input', value: flowDraft.name || '', placeholder: '例如 DL 网关', onChange: field('name') })),
+                React.createElement('div', { className: 'ag-field' },
+                  React.createElement('label', null, 'API Key'),
+                  React.createElement('input', {
+                    className: 'ag-input', type: 'password', value: flowDraft.apiKey || '',
+                    placeholder: creating ? '该组专用' : (provider.hasKey === false ? '未配置' : '留空不改'),
+                    onChange: field('apiKey'),
+                  }))),
               React.createElement('div', { className: 'ag-field' },
-                React.createElement('label', null, '默认模型（文生图、图生图和 Agent 都先用这个）'),
+                React.createElement('label', null, '链接'),
+                React.createElement('input', {
+                  className: 'ag-input', value: flowDraft.baseURL || '',
+                  placeholder: 'https://…/v1', onChange: field('baseURL'),
+                })),
+              pickerNode('保存', () => act.saveGroup(provider),
+                creating
+                  ? null
+                  : React.createElement('button', {
+                    className: 'agx-btn-text', style: { marginRight: 'auto' },
+                    onClick: () => act.removeProvider(provider),
+                  }, '删除组')))
+          }
+
+          // 编辑模型：显示名 / 上游模型 id / 每张单价。
+          function editModelNode(model) {
+            return React.createElement('div', { className: 'agx-editor' },
+              React.createElement('div', { className: 'agx-editor-header' },
+                React.createElement('span', { className: 'agx-editor-title' }, '编辑模型 · ' + model.name),
+                React.createElement('span', { className: 'agx-editor-route' }, model.model)),
+              React.createElement('div', { className: 'agx-editor-grid' },
+                React.createElement('div', { className: 'ag-field' },
+                  React.createElement('label', null, '显示名'),
+                  React.createElement('input', { className: 'ag-input', value: flowDraft.displayName || '', onChange: field('displayName') })),
+                React.createElement('div', { className: 'ag-field' },
+                  React.createElement('label', null, '模型 id'),
+                  React.createElement('input', { className: 'ag-input', value: flowDraft.model || '', onChange: field('model') }))),
+              React.createElement('div', { className: 'ag-field' },
+                React.createElement('label', null, '每张单价（美元/张，选填）'),
+                React.createElement('input', {
+                  className: 'ag-input', inputMode: 'decimal', value: flowDraft.pricePerImage || '',
+                  placeholder: '例如 0.04', onChange: field('pricePerImage'),
+                })),
+              React.createElement('div', { className: 'agx-actions' },
+                React.createElement('button', { className: 'agx-btn-text', style: { marginRight: 'auto' }, onClick: () => act.removeModel(model) }, '删除'),
+                React.createElement('button', { className: 'ag-btn', onClick: () => act.close() }, '取消'),
+                React.createElement('button', { className: 'ag-btn ag-btn-primary', onClick: () => act.saveEditModel(model) }, '保存')))
+          }
+
+          // 组内一条模型：显示名 + 标签 / 第二行上游 model id + 编辑 / 删除。
+          function modelRowNode(model, provider) {
+            if (flow.kind === 'editModel' && flow.modelId === model.id) return editModelNode(model)
+            return React.createElement('div', { key: model.id, className: 'agx-model' },
+              React.createElement('div', { className: 'agx-model-name' },
+                React.createElement('span', null, model.name),
+                model.isDefault ? React.createElement('span', { className: 'agx-tag agx-tag-ok' }, '默认') : null,
+                model.pricePerImage ? React.createElement('span', { className: 'agx-tag' }, '$' + model.pricePerImage + '/张') : null),
+              React.createElement('div', { className: 'agx-model-meta' }, model.model),
+              React.createElement('div', { className: 'agx-item-actions' },
+                React.createElement('button', { className: 'agx-btn-edit', onClick: () => act.openEditModel(model, provider) }, '编辑'),
+                React.createElement('button', { className: 'agx-btn-text', onClick: () => act.removeModel(model) }, '删除')))
+          }
+
+          // 一个组：可折叠的组头（圆点 + 组名 + 链接 + 模型数 + 编辑 / 删除）+ 展开后的模型行与表单。
+          function providerNode(provider) {
+            // 正在编辑组里的某条模型时，这个组必须展开（否则编辑卡没地方显示）。
+            const open = isOpen(provider.id) || (flow.kind === 'editModel' && flow.providerId === provider.id)
+            const editing = flow.kind === 'group' && flow.providerId === provider.id
+            return React.createElement('div', { key: provider.id, className: 'agx-group' },
+              React.createElement('div', { className: 'agx-group-head' },
+                React.createElement('button', {
+                  className: 'agx-group-toggle',
+                  title: open ? '收起这个组' : '展开这个组',
+                  onClick: () => act.toggleGroup(provider.id, !open),
+                },
+                React.createElement('span', { className: 'agx-caret' }, open ? '▾' : '▸'),
+                React.createElement('span', {
+                  className: 'agx-dot ' + (provider.hasKey === false ? 'agx-dot-miss' : 'agx-dot-ok'),
+                  title: provider.hasKey === false ? '这个组还没有 API Key' : 'API Key 来源：' + provider.keySource,
+                }),
+                React.createElement('span', { className: 'agx-group-name' }, provider.name)),
+                React.createElement('span', { className: 'agx-group-url' }, provider.baseURL),
+                React.createElement('span', { className: 'agx-group-count' }, String(provider.models.length) + ' 个模型'),
+                React.createElement('div', { className: 'agx-item-actions' },
+                  React.createElement('button', { className: 'agx-btn-edit', onClick: () => (editing ? act.close() : act.openGroup(provider)) }, '编辑'),
+                  React.createElement('button', { className: 'agx-btn-text', onClick: () => act.removeProvider(provider) }, '删除'))),
+              provider.hasKey === false && (open || editing)
+                ? React.createElement('div', { className: 'agx-hint' }, '缺 API Key（' + provider.keyEnv + '）')
+                : null,
+              editing
+                ? groupFormNode(provider)
+                : open
+                  ? React.createElement('div', null,
+                    provider.models.length === 0
+                      ? React.createElement('div', { className: 'agx-hint' }, '还没有模型')
+                      : React.createElement('div', { className: 'agx-rows' }, provider.models.map((model) => modelRowNode(model, provider))),
+                    React.createElement('button', { className: 'agx-add-btn agx-add-sm', onClick: () => act.openGroup(provider) }, '+ 添加模型'))
+                  : null)
+          }
+
+          const adding = flow.kind === 'group' && flow.providerId === ''
+          const addNode = adding
+            ? groupFormNode(null)
+            : React.createElement('button', { className: 'agx-add-btn', onClick: () => act.openGroup(null) }, '+ 添加模型组')
+
+          const hasModels = entries.length > 0
+          return React.createElement('div', { className: 'ag-card' },
+            React.createElement('div', { className: 'agx-head' },
+              React.createElement('h3', { className: 'ag-section' }, '生图模型'),
+              React.createElement('span', { className: 'agx-sub' },
+                providers.length + ' 组 · ' + entries.length + ' 模型'),
+              React.createElement('div', { className: 'agx-head-right' },
+                React.createElement('button', { className: 'agx-link', title: '测默认模型连通性（只打 /models，不扣费）', onClick: act.test, disabled: test.busy }, test.busy ? '测试中…' : '测试'),
+                React.createElement('button', { className: 'agx-link', onClick: act.reload }, '刷新'))),
+            hasModels
+              ? React.createElement('div', { className: 'ag-field' },
+                React.createElement('label', null, '默认模型'),
                 React.createElement('select', {
                   className: 'ag-select',
                   value: catalog.defaultId || '',
-                  onChange: (event) => { if (typeof props.onSetDefault === 'function') props.onSetDefault(event.target.value) },
-                }, catalog.entries.map((entry) => React.createElement('option', { key: entry.id, value: entry.id },
-                  (entry.groupLabel || entry.group) + ' · ' + entry.name)))),
-              React.createElement('div', { className: 'agx-rows' },
-                catalog.entries.map((entry) => modelItemNode(entry))),
-              addOpen
-                ? React.createElement('div', { className: 'agx-editor' },
-                  presetGroups.length > 0
-                    ? React.createElement('div', { className: 'agx-tabs' },
-                    React.createElement('button', { className: 'agx-tab' + (mode !== 'custom' ? ' agx-tab-on' : ''), onClick: () => props.onSetAddMode && props.onSetAddMode('group') }, '按分组添加'),
-                    React.createElement('button', { className: 'agx-tab' + (mode === 'custom' ? ' agx-tab-on' : ''), onClick: () => props.onSetAddMode && props.onSetAddMode('custom') }, '自定义模型 API'))
-                    : null,
-                  React.createElement('p', { className: 'agx-hint' }, mode === 'custom'
-                    ? '填写图片接口地址（标准 OpenAI Images 接口）与模型 id。'
-                    : '使用所选分组的 API 地址与密钥，只需填模型 id 即可。'),
-                  React.createElement('div', { className: 'ag-field' },
-                    React.createElement('label', null, '分组'),
-                    presetGroups.length === 0 || mode === 'custom'
-                      ? React.createElement('input', { className: 'ag-input', value: '自定义（CUSTOM_API_KEY）', disabled: true })
-                      : React.createElement('select', { className: 'ag-select', value: draft.group || presetGroups[0].id, onChange: field('group') },
-                        presetGroups.map((group) => React.createElement('option', { key: group.id, value: group.id }, group.label)))),
-                  React.createElement('div', { className: 'ag-field' },
-                    React.createElement('label', null, 'API 密钥（可选）'),
-                    React.createElement('input', {
-                      className: 'ag-input', type: 'password', value: draft.newKey || '',
-                      placeholder: mode === 'custom' ? '将存为该模型专属的 CUSTOM_API_KEY' : '留空使用分组密钥',
-                      onChange: field('newKey'),
-                    })),
-                  React.createElement('details', { className: 'agx-collapse', open: mode === 'custom' },
-                    React.createElement('summary', null, '自定义设置'),
-                    React.createElement('div', { className: 'ag-field' },
-                      React.createElement('label', null, 'API 地址'),
-                      React.createElement('input', { className: 'ag-input', value: draft.newBase || '', placeholder: 'https://…/v1', onChange: field('newBase') }))),
-                  React.createElement('div', { className: 'agx-fetch' },
-                    React.createElement('label', { className: 'ag-label' }, '模型 id 与显示名（只列生图模型）'),
-                    React.createElement('button', { className: 'agx-link', onClick: onLoadModels, disabled: !models || models.busy },
-                      models && models.busy ? '正在询问提供商…' : '获取可用模型')),
-                  models && models.error ? React.createElement('div', { className: 'ag-msg ag-msg-err' }, models.error) : null,
-                  models && !models.error && models.message ? React.createElement('div', { className: 'agx-hint' }, models.message) : null,
-                  models && models.items && models.items.length > 0
-                    ? React.createElement('div', { className: 'ag-chips' },
-                      models.items.map((id) => React.createElement('button', {
-                        key: id, className: 'ag-chip', style: { cursor: 'pointer' }, title: '点击填入模型 id',
-                        onClick: () => setDraft({ ...draft, newModel: id, newName: draft.newName || id }),
-                      }, '+ ' + id)))
-                    : (models && !models.error && models.items && models.items.length === 0
-                      ? React.createElement('div', { className: 'agx-hint' }, '没有识别到生图模型，可直接手动填写模型 id。')
-                      : null),
-                  React.createElement('div', { className: 'agx-editor-grid' },
-                    React.createElement('div', { className: 'ag-field' },
-                      React.createElement('label', null, '模型 id'),
-                      React.createElement('input', { className: 'ag-input', value: draft.newModel || '', placeholder: '上游 model id', onChange: field('newModel') })),
-                    React.createElement('div', { className: 'ag-field' },
-                      React.createElement('label', null, '显示名（留空用模型 id）'),
-                      React.createElement('input', { className: 'ag-input', value: draft.newName || '', placeholder: '例如 GPT Image 2', onChange: field('newName') }))),
-                  React.createElement('div', { className: 'agx-actions' },
-                    React.createElement('button', { className: 'ag-btn', onClick: () => props.onToggleAdd && props.onToggleAdd(false) }, '取消'),
-                    React.createElement('button', { className: 'ag-btn ag-btn-primary', onClick: () => props.onAddModel && props.onAddModel(draft) }, '加入目录')))
-                : React.createElement('button', { className: 'agx-add-btn', onClick: () => props.onToggleAdd && props.onToggleAdd(true) }, '+ 添加模型'),
-              React.createElement('div', { className: 'ag-row' },
-                React.createElement('button', { className: 'ag-btn', onClick: onTest, disabled: test.busy }, test.busy ? '测试中…' : '测试默认模型'),
-                React.createElement('button', { className: 'ag-btn', onClick: onReload }, '刷新')),
-              test.message
-                ? React.createElement('div', { className: 'ag-msg ' + (test.ok ? 'ag-msg-ok' : 'ag-msg-err') }, test.message)
-                : null,
-              React.createElement('div', { className: 'ag-note' }, '默认模型可随时切换，下一次生成立刻生效。配置文件：' + settings.path))
-          }
-          // 兜底：正常路径下 configView 一定带 catalog；异常时给明确提示而不是空白。
-          return React.createElement('div', { className: 'ag-card' },
-            React.createElement('div', { className: 'ag-empty' }, '设置读取异常：未拿到模型目录。点上方「刷新」重试。'))
+                  onChange: (event) => act.setDefault(event.target.value),
+                }, providers.map((provider) => React.createElement('optgroup', { key: provider.id, label: provider.name },
+                  provider.models.map((model) => React.createElement('option', { key: model.id, value: model.id },
+                    model.name + '（' + model.model + '）'))))))
+              : null,
+            providers.length > 0
+              ? React.createElement('div', { className: 'agx-groups' }, providers.map((provider) => providerNode(provider)))
+              : null,
+            addNode,
+            test.message
+              ? React.createElement('div', { className: 'ag-msg ' + (test.ok ? 'ag-msg-ok' : 'ag-msg-err') }, test.message)
+              : null,
+            React.createElement('div', { className: 'ag-note' }, '配置：' + settings.path))
         }
 
         // 纯渲染函数（不持 hook）：左栏「提示词库」
@@ -760,7 +957,7 @@ window.__ModuleLoader__.load({
                         ? React.createElement('div', { className: 'ag-empty', style: { gridColumn: '1 / -1' } }, '这条还没生成过图片。')
                         : images.map((name) => React.createElement('div', { key: name, className: 'ag-card', style: { padding: 6 } },
                           React.createElement('img', { className: 'ag-thumb', src: srcRecent(name), alt: name, loading: 'lazy' }),
-                          React.createElement('div', { className: 'ag-caption' }, name))))
+                          React.createElement('div', { className: 'ag-caption ag-dim', title: name }, name))))
                     : null)
               }))
         }
@@ -776,9 +973,9 @@ window.__ModuleLoader__.load({
           const [refs, setRefs] = React.useState(() => persistentRefs(panelMemory.refs)) // 9
           const [gen, setGenState] = React.useState(() => panelMemory.gen && typeof panelMemory.gen === 'object' ? panelMemory.gen : { busy: false, error: null, result: null }) // 10
           const [settings, setSettings] = React.useState(null)              // 12
-          const [draft, setDraft] = React.useState({ baseURL: '', model: '', apiKey: '' }) // 13
+          const [flow, setFlow] = React.useState({ kind: null, providerId: '', modelId: '', picks: {} }) // 13（设置页流程：add / update / editProvider / editModel + 勾选）
           const [test, setTest] = React.useState({ busy: false, ok: null, message: null }) // 14
-          const [models, setModels] = React.useState({ busy: false, items: null, message: null, error: null }) // 15
+          const [models, setModels] = React.useState({ busy: false, items: null, message: null, error: null, added: [] }) // 15（获取模型结果）
           const [urlInput, setUrlInput] = React.useState('')                // 16
           const [libs, setLibs] = React.useState(null)                      // 17
           const [libForm, setLibForm] = React.useState({ open: false, kind: 'prompt', title: '', text: '' }) // 18
@@ -831,11 +1028,8 @@ window.__ModuleLoader__.load({
           // 设置加载：挂载时预取一次，之后缓存不重复请求（修「点设置很慢」）。
           const settingsLoadedRef = React.useRef(false)
           const [settingsError, setSettingsError] = React.useState(null)    // 24（设置读取失败提示）
-          const [entryTest, setEntryTest] = React.useState({ id: '', busy: false, ok: null, message: null }) // 25（目录单条模型测试）
-          const [addOpen, setAddOpen] = React.useState(false)                // 26（「添加模型」展开态）
-          const [addMode, setAddMode] = React.useState('group')              // 27（添加方式：按分组 / 自定义）
-          const [editing, setEditing] = React.useState(null)                 // 28（正在编辑的模型 id）
-          const [editDraft, setEditDraft] = React.useState(null)             // 29（编辑表单草稿）
+          const [openGroups, setOpenGroups] = React.useState({})             // 25（组卡片展开态，未记录的单组默认展开）
+          const [flowDraft, setFlowDraft] = React.useState({ name: '', apiKey: '', baseURL: '', model: '', displayName: '', pricePerImage: '' }) // 26（设置页表单草稿）
           const loadSettings = () => {
             if (settingsLoadedRef.current) return
             settingsLoadedRef.current = true
@@ -844,7 +1038,7 @@ window.__ModuleLoader__.load({
               .then((res) => {
                 if (res && res.ok && res.config) {
                   setSettings(res.config)
-                  setDraft({ baseURL: res.config.baseURL, model: res.config.model, apiKey: '' })
+                  setFlowDraft({ name: '', apiKey: '', baseURL: '', model: '', displayName: '', pricePerImage: '' })
                 } else {
                   throw new Error((res && res.message) || '设置接口返回异常')
                 }
@@ -1047,7 +1241,6 @@ window.__ModuleLoader__.load({
           const applyConfig = (result) => {
             if (!result || result.ok === false) throw new Error((result && result.message) || '保存失败')
             setSettings(result.config)
-            setDraft((prev) => ({ ...prev, baseURL: result.config.baseURL, model: result.config.model, apiKey: '', newName: '', newModel: '', newBase: '' }))
             recent.refresh()
             return result
           }
@@ -1056,72 +1249,116 @@ window.__ModuleLoader__.load({
               .then(applyConfig)
               .catch((error) => window.alert(String(error && error.message ? error.message : error)))
           }
-          const onAddModel = (input) => {
-            const modelId = String((input && (input.newModel || input.model)) || '').trim()
-            if (modelId === '') { window.alert('请填写模型 id'); return }
-            postJson('/api/image-gen/config', {
-              action: 'add',
-              group: (input && input.group) || 'custom',
-              name: (input && (input.newName || input.name)) || modelId,
-              model: modelId,
-              baseURL: (input && (input.newBase || input.baseURL)) || '',
-              apiKey: input && typeof input.newKey === 'string' && input.newKey.trim() !== '' ? input.newKey.trim() : undefined,
-              makeDefault: false,
+          // ── 设置页动作：组与组内模型的增删改 + 获取模型勾选 ──
+          const EMPTY_FETCHED = { busy: false, items: null, message: null, error: null, added: [] }
+          const EMPTY_DRAFT = { name: '', apiKey: '', baseURL: '', model: '', displayName: '', pricePerImage: '' }
+          const closeFlow = () => { setFlow({ kind: null, providerId: '', modelId: '', picks: {} }); setModels(EMPTY_FETCHED) }
+          const pickedIds = (picks) => Object.keys(picks || {}).filter((key) => picks[key] === true)
+          // 所有写操作都回传完整目录视图，applyConfig 一把替换。
+          const writeConfig = (body, done) => postJson('/api/image-gen/config', body)
+            .then((result) => {
+              applyConfig(result)
+              if (typeof done === 'function') done(result)
+              return result
             })
+            .catch((error) => window.alert(String(error && error.message ? error.message : error)))
+          // 获取模型：用表单里刚填的链接与 Key；改已有组时带上组 id（Key 留空就用该组已存的那把）。
+          const getModels = () => {
+            if (models.busy) return
+            const body = {}
+            if (flow.providerId !== '') body.id = flow.providerId
+            const baseURL = String(flowDraft.baseURL || '').trim()
+            const apiKey = String(flowDraft.apiKey || '').trim()
+            if (baseURL !== '') body.baseURL = baseURL
+            if (apiKey !== '') body.apiKey = apiKey
+            setModels({ busy: true, items: null, message: null, error: null, added: [] })
+            postJson('/api/image-gen/config/models', body)
               .then((result) => {
-                applyConfig(result)
-                setDraft((prev) => ({ ...prev, newName: '', newModel: '', newBase: '', newKey: '' }))
-                setAddOpen(false)
-                window.alert(result.message || '已加入模型目录')
+                if (result.ok === false) throw new Error(result.message || '获取模型失败')
+                setModels({
+                  busy: false,
+                  items: Array.isArray(result.models) ? result.models : [],
+                  message: result.message,
+                  error: null,
+                  added: Array.isArray(result.added) ? result.added : [],
+                })
               })
-              .catch((error) => window.alert(String(error && error.message ? error.message : error)))
+              .catch((error) => setModels({ busy: false, items: null, message: null, error: String(error && error.message ? error.message : error), added: [] }))
           }
-          const onTestEntry = (id) => {
-            setEntryTest({ id, busy: true, ok: null, message: null })
-            postJson('/api/image-gen/config/test', { id })
-              .then((result) => setEntryTest({ id, busy: false, ok: result.ok === true, message: result.message }))
-              .catch((error) => setEntryTest({ id, busy: false, ok: false, message: String(error && error.message ? error.message : error) }))
+          const openGroup = (provider) => {
+            const editing = provider !== null && provider !== undefined
+            setFlow({ kind: 'group', providerId: editing ? provider.id : '', modelId: '', picks: {} })
+            setFlowDraft(editing
+              ? { ...EMPTY_DRAFT, name: provider.name || '', baseURL: provider.baseURL || '' }
+              : EMPTY_DRAFT)
+            setModels(EMPTY_FETCHED)
           }
-          const onSetAddMode = (mode) => {
-            setAddMode(mode)
-            // 自定义 tab 固定写入自定义分组；切回按分组时保留原有分组。
-            setDraft((prev) => ({ ...prev, group: mode === 'custom' ? 'custom' : prev.group }))
-          }
-          const onEditModel = (entry) => {
-            if (entry === null) { setEditing(null); setEditDraft(null); return }
-            setAddOpen(false)
-            setEditing(entry.id)
-            setEditDraft({ name: entry.name || '', model: entry.model || '', baseURL: entry.baseURL || '', key: '', pricePerImage: entry.pricePerImage != null ? String(entry.pricePerImage) : '' })
-          }
-          const onSaveEdit = (entry) => {
-            const model = String(editDraft?.model || '').trim()
-            if (model === '') { window.alert('模型 id 不能为空'); return }
-            const priceRaw = String(editDraft?.pricePerImage || '').trim()
-            postJson('/api/image-gen/config', {
-              action: 'add',
-              id: entry.id,
-              group: entry.group,
-              name: String(editDraft?.name || '').trim() || model,
-              model,
-              baseURL: String(editDraft?.baseURL || '').trim(),
-              apiKey: editDraft && typeof editDraft.key === 'string' && editDraft.key.trim() !== '' ? editDraft.key.trim() : undefined,
-              pricePerImage: priceRaw !== '' ? Number(priceRaw) : undefined,
+          const toggleGroup = (id, next) => setOpenGroups((prev) => ({ ...prev, [id]: next }))
+          const openEditModel = (model, provider) => {
+            setFlow({ kind: 'editModel', providerId: provider === undefined ? '' : provider.id, modelId: model.id, picks: {} })
+            setFlowDraft({
+              ...EMPTY_DRAFT,
+              displayName: model.name || '',
+              model: model.model || '',
+              pricePerImage: model.pricePerImage != null ? String(model.pricePerImage) : '',
             })
-              .then((result) => {
-                applyConfig(result)
-                setEditing(null)
-                setEditDraft(null)
-                window.alert(result.message || '已保存')
-              })
-              .catch((error) => window.alert(String(error && error.message ? error.message : error)))
           }
-          const onRemoveModel = (entry) => {
-            const target = entry !== null && typeof entry === 'object' ? entry : { id: String(entry ?? ''), name: String(entry ?? '') }
-            if (target.id === '') return
-            if (!window.confirm('从目录移除「' + (target.name || target.id) + '」？')) return
-            postJson('/api/image-gen/config', { action: 'remove', id: target.id })
-              .then(applyConfig)
-              .catch((error) => window.alert(String(error && error.message ? error.message : error)))
+          const togglePick = (id) => setFlow((prev) => ({ ...prev, picks: { ...prev.picks, [id]: prev.picks[id] !== true } }))
+          const pickAll = (ids, on) => setFlow((prev) => {
+            const picks = { ...prev.picks }
+            for (const id of Array.isArray(ids) ? ids : []) {
+              if (models.added.includes(id)) continue
+              if (on) picks[id] = true
+              else delete picks[id]
+            }
+            return { ...prev, picks }
+          })
+          const addManual = () => {
+            const id = String(flowDraft.model || '').trim()
+            if (id === '') return
+            setFlow((prev) => ({ ...prev, picks: { ...prev.picks, [id]: true } }))
+            setFlowDraft((prev) => ({ ...prev, model: '' }))
+          }
+          // 保存组表单：新建 → addProvider（含勾选的模型）；编辑 → 先 updateProvider 改名字/链接/密钥，
+          // 再把勾选的模型补进去（只增不删；链接改动会先落盘，拉列表用的也是表单里的值）。
+          const saveGroup = (provider) => {
+            const baseURL = String(flowDraft.baseURL || '').trim()
+            if (baseURL === '') { window.alert('请填写链接（接口地址，例如 https://…/v1）'); return }
+            const name = String(flowDraft.name || '').trim()
+            const apiKey = String(flowDraft.apiKey || '').trim() || undefined
+            const models = pickedIds(flow.picks).map((id) => ({ model: id }))
+            if (provider === null || provider === undefined) {
+              writeConfig({ action: 'addProvider', name, baseURL, apiKey, models },
+                (result) => { closeFlow(); window.alert(result.message || '已添加模型组') })
+              return
+            }
+            writeConfig({ action: 'updateProvider', id: provider.id, name: name || provider.name, baseURL, apiKey }, (result) => {
+              if (models.length === 0) { closeFlow(); window.alert(result.message || '已保存'); return }
+              writeConfig({ action: 'addModels', providerId: provider.id, models }, (added) => {
+                closeFlow()
+                window.alert((result.message || '已保存') + '；' + (added.message || '模型已加入'))
+              })
+            })
+          }
+          const saveEditModel = (model) => {
+            const upstream = String(flowDraft.model || '').trim()
+            if (upstream === '') { window.alert('模型 id 不能为空'); return }
+            writeConfig({
+              action: 'updateModel',
+              id: model.id,
+              name: String(flowDraft.displayName || '').trim() || upstream,
+              model: upstream,
+              pricePerImage: String(flowDraft.pricePerImage || '').trim(),
+            }, (result) => { closeFlow(); window.alert(result.message || '已保存') })
+          }
+          const removeProvider = (provider) => {
+            const count = Array.isArray(provider.models) ? provider.models.length : 0
+            if (!window.confirm('删除模型组「' + provider.name + '」' + (count > 0 ? '及其 ' + count + ' 个模型' : '') + '？')) return
+            writeConfig({ action: 'removeProvider', id: provider.id }, () => closeFlow())
+          }
+          const removeModel = (model) => {
+            if (!window.confirm('从组里删除模型「' + (model.name || model.model) + '」？')) return
+            writeConfig({ action: 'removeModel', id: model.id }, () => closeFlow())
           }
           const onTest = () => {
             setTest({ busy: true, ok: null, message: null })
@@ -1129,15 +1366,22 @@ window.__ModuleLoader__.load({
               .then((result) => setTest({ busy: false, ok: result.ok === true, message: result.message }))
               .catch((error) => setTest({ busy: false, ok: false, message: String(error && error.message ? error.message : error) }))
           }
-          const loadModels = () => {
-            if (models.busy) return
-            setModels({ busy: true, items: null, message: null, error: null })
-            postJson('/api/image-gen/config/models', {})
-              .then((result) => {
-                if (result.ok === false) throw new Error(result.message || '加载模型列表失败')
-                setModels({ busy: false, items: Array.isArray(result.models) ? result.models : [], message: result.message, error: null })
-              })
-              .catch((error) => setModels({ busy: false, items: null, message: null, error: String(error && error.message ? error.message : error) }))
+          const settingsActions = {
+            reload: forceSettings,
+            test: onTest,
+            loadModels: getModels,
+            togglePick,
+            pickAll,
+            addManual,
+            openGroup,
+            toggleGroup,
+            openEditModel,
+            close: closeFlow,
+            saveGroup,
+            saveEditModel,
+            removeProvider,
+            removeModel,
+            setDefault: onSetDefault,
           }
 
           const storagePanel = React.createElement('div', { className: 'ag-col ag-col-left' },
@@ -1185,7 +1429,7 @@ window.__ModuleLoader__.load({
                       key: file.name,
                       onClick: () => onTileClick(file.name),
                       draggable: true,
-                      title: mode === 'img' ? '拖到右侧参考图区域' : file.name,
+                      title: (typeof file.prompt === 'string' && file.prompt.trim() !== '' ? file.prompt.trim() + '\n\n' : '') + file.name,
                       onDragStart: (event) => {
                         event.dataTransfer.setData('text/plain', 'image-gen-saved:' + file.name)
                         event.dataTransfer.effectAllowed = 'copy'
@@ -1201,7 +1445,11 @@ window.__ModuleLoader__.load({
                         className: 'ag-tile-del',
                         onClick: (event) => { event.stopPropagation(); remove(file.name) },
                       }, sideTab === 'fav' ? '移除' : '删除'),
-                      React.createElement('div', { className: 'ag-caption' }, file.name)))),
+                      // 提示词当主文案：图下第一眼看的是「这张是怎么来的」；
+                      // 没有提示词记录的老图退化成弱化文件名，不留一整片「无提示词记录」。
+                      typeof file.prompt === 'string' && file.prompt.trim() !== ''
+                        ? React.createElement(PromptNote, { prompt: file.prompt, source: file.promptSource, clamp: 2 })
+                        : React.createElement('div', { className: 'ag-caption ag-dim' }, file.name)))),
                 active.state.hasMore
                   ? React.createElement('div', { className: 'ag-empty' },
                     React.createElement('div', { ref: sentinelRef, style: { height: 1 } }),
@@ -1216,14 +1464,8 @@ window.__ModuleLoader__.load({
               React.createElement('button', { className: 'ag-btn' + (mode === 'set' ? ' ag-btn-on' : ''), onClick: () => { setMode('set'); loadSettings() } }, '设置')),
             mode === 'set'
               ? React.createElement(SettingsForm, {
-                  settings, draft, setDraft, test,
-                  onTest,
-                  onReload: forceSettings,
-                  models, onLoadModels: loadModels,
-                  settingsError,
-                  onSetDefault, onAddModel, onRemoveModel,
-                  entryTest, onTestEntry, addOpen, onToggleAdd: setAddOpen,
-                  addMode, onSetAddMode, editing, editDraft, setEditDraft, onEditModel, onSaveEdit,
+                  settings, flow, flowDraft, setFlowDraft, models, test, settingsError, openGroups,
+                  act: settingsActions,
                 })
               : React.createElement(GenerateForm, {
                   mode, form, setForm, refs, removeRef,
@@ -1234,12 +1476,15 @@ window.__ModuleLoader__.load({
                 }))
 
           const openIndex = open === null ? null : Math.min(open, Math.max(0, files.length - 1))
-          return React.createElement('div', { className: 'ag-root', onScroll },
-            React.createElement('div', { className: 'ag-head' },
-              React.createElement('div', null,
-                React.createElement('h2', { className: 'ag-title' }, '图片生成'),
-                React.createElement('div', { className: 'ag-sub' }, '左栏收纳 / 提示词库 / 收藏库 · 右栏文生图 / 图生图 · 设置接入生图模型'))),
-            React.createElement('div', { className: 'ag-cols' }, storagePanel, makePanel),
+          // 灯箱是 ag-shell 的直接子元素：ag-root 自带 overflow:auto，
+          // 放进去会被它的滚动容器裁掉，所以要平级。
+          return React.createElement('div', { className: 'ag-shell' },
+            React.createElement('div', { className: 'ag-root', onScroll },
+              React.createElement('div', { className: 'ag-head' },
+                React.createElement('div', null,
+                  React.createElement('h2', { className: 'ag-title' }, '图片生成'),
+                  React.createElement('div', { className: 'ag-sub' }, '左栏收纳 / 提示词库 / 收藏库 · 右栏文生图 / 图生图 · 设置接入生图模型'))),
+              React.createElement('div', { className: 'ag-cols' }, storagePanel, makePanel)),
             openIndex !== null && files.length > 0
               ? React.createElement(Lightbox, {
                   files,
@@ -1267,9 +1512,17 @@ window.__ModuleLoader__.load({
 
         if (slots === undefined) return
         slots.inject('main', () => slots.register({ name: 'main', key: PANEL_KEY }, Panel))
-        slots.inject('sidebar.panellist', () => slots.register(
-          { name: 'sidebar.panellist', id: PANEL_KEY, label: '图片生成', order: 49 },
-          (props) => panelGlyph(props)))
+        // 侧边栏入口：和 dsh-toolkit 其它组件一起加载时统一交给 toolkit 组件管理
+        // （在共享注册表里登记一份，侧边栏只留「工具集」+ 一行并排小图标）；
+        // 单独加载本文件时注册表不存在，退回自己注册一条入口，面板仍能从侧边栏点开。
+        const registry = typeof __dshToolkitRegistry === 'object' && __dshToolkitRegistry !== null ? __dshToolkitRegistry : null
+        if (registry !== null) {
+          registry.register({ id: PANEL_KEY, Panel, label: '图片生成', order: 49, glyphText: 'A' })
+        } else {
+          slots.inject('sidebar.panellist', () => slots.register(
+            { name: 'sidebar.panellist', id: PANEL_KEY, label: '图片生成', order: 49 },
+            (props) => panelGlyph(props)))
+        }
       },
     }
   },

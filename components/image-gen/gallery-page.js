@@ -1,11 +1,12 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { SIZES, resolveConfig } from './config.js?v=37'
-import { imageDir, scanImageDirs } from './generate.js?v=37'
+import { SIZES, resolveConfig } from './config.js?v=44'
+import { imageDir, scanImageDirs } from './generate.js?v=44'
+import { attachImagePrompts } from './prompts.js?v=44'
 
 export const name = 'image-gen-gallery-page'
-export const inject = ['settings', 'credentials', 'connection', 'sessions']
+export const inject = ['settings', 'credentials', 'connection', 'sessions', 'timer']
 
 const IMAGE_NAME = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i
 const MIME_BY_EXT = {
@@ -113,7 +114,9 @@ export function apply(ctx) {
       const dirs = scanImageDirs(ctx)
       const { baseURL, model, apiKey } = await resolveConfig(ctx)
       const all = await listSaved(dirs)
-      const files = all.slice(offset, offset + limit)
+      // 每项带上生成时用的提示词（prompt / promptSource / promptTitle），
+      // 面板据此在图片旁边直接展示，无需另开接口。
+      const files = await attachImagePrompts(all.slice(offset, offset + limit))
       return json({
         generatedAt: Date.now(),
         tool: 'generate_image',

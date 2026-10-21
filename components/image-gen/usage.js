@@ -10,7 +10,7 @@
  */
 import { appendFile, readFile, stat } from 'node:fs/promises'
 
-import { usageFile } from './paths.js?v=37'
+import { usageFile } from './paths.js?v=44'
 
 const USAGE_ENV = 'IMAGE_GEN_USAGE'
 

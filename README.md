@@ -2,17 +2,24 @@
 
 **简体中文** | [English](./README.en.md)
 
-一个 DSH（DeepSeek Harness）Web 端 Bundle，把两件互相独立的事装在一起：
+一个 DSH（DeepSeek Harness）Web 端 Bundle：把六件互相独立的事装在一起，五个面板再由「工具集」这一个侧边栏入口统一收口。
 
-| 组件 | 侧边栏面板 | 给 Agent 的工具 | 解决的问题 |
+| 组件 | 面板 | 给 Agent 的工具 | 一句话 |
 | --- | --- | --- | --- |
-| **image-gen** | 「图片生成」（order 49） | `generate_image` | 调用任意 OpenAI 兼容的图片接口生成与编辑图片，并管理图库与提示词 |
-| **token-usage** | 「Token 用量」（order 50） | — | 统计全部会话的 Token 消耗与成本，含近一年活跃度热力图 |
+| **image-gen** | 「工具集」→「图片生成」 | `generate_image` | 调任意 OpenAI 兼容生图接口生成 / 编辑图片，管图库、提示词与收藏 |
+| **token-usage** | 「Token 用量」（order 50，独立面板） | — | 统计全部会话的 Token 消耗与成本，含近一年活跃度热力图 |
+| **model-test** | 「工具集」→「模型测试」 | — | 测 DSH 已配置模型的连通性、首字延迟与输出速度，并按模型名补参数 |
+| **notifications** | 「工具集」→「通知」 | — | 16 类事件的提醒中心；提醒只走系统通知，应用内零打扰 |
+| **mcp** | 「工具集」→「MCP」 | — | profile `cordis.patch.yml` 里 MCP server 的列 / 增 / 改 / 删 / 启停 / 探活 |
+| **skill** | 「工具集」→「Skill」 | — | 六个扫描根下 skill 的浏览、编辑、新建、删除与启停 |
+| **toolkit** | 「工具集」（order 48） | — | 把上面五个面板收进同一套界面，外加内置的只读「设置」分页 |
 
-两个组件可以单独启用：面板 key 不同（`image-gen` / `token-usage`），路由前缀也不同。
+各业务组件可以单独启用：面板 key 不同（`image-gen` / `token-usage` / `model-test` / `notifications` / `mcp` / `skill`），路由前缀也不同。
+「工具集」是外壳：浏览器侧负责侧边栏入口与分页切换，Host 侧只有一个只读的设置路由。
 
 > **设计原则：不绑定任何服务商。** 插件不内置厂商模型、默认地址或私有网关——
 > 模型目录完全由你自己添加，任何实现了标准 `POST /images/generations` 的服务都能接。
+> `model-test` 同理：它只测 **DSH 自己已经配置并可路由**的模型，不引入第二套凭证或地址。
 
 | 项目 | 要求 |
 | --- | --- |
@@ -22,13 +29,14 @@
 
 界面文案为简体中文；本文中出现的界面文字、文件名、路由与标识符均保持原文。
 
+文档分两层：本文是**上手与索引**；每个组件的需求、约束、接口契约、验收口径在
+[`docs/`](./docs/) 的功能案里，组件的实现细节在同目录的 `README.md` 里。
+
 ---
 
 ## 安装
 
-### 前置
-
-- DSH **0.1.7+**，并有一个 Web profile（默认位于 `~/.dsh/profiles/<profile>/`）。
+DSH **0.1.7+**，并有一个 Web profile（默认位于 `~/.dsh/profiles/<profile>/`）。
 
 ### 方式一：作为依赖安装（推荐）
 
@@ -65,128 +73,61 @@
 
 ---
 
-## 组件一：图片生成（image-gen）
+## 组件速览
 
-### 三步接入
+每个组件一句起点，细节都在功能案与组件 README 里。
 
-1. 打开侧边栏 **「图片生成」→「设置」**。
-2. 点 **「+ 添加模型」**，填写：
-   - **API 地址**：例如 `https://your-gateway.example.com/v1`
-   - **模型 id**：上游真实的 model 名；可点 **「获取可用模型」** 从 `/models` 探测并点选
-   - **API 密钥**：写入 DSH 凭据库（优先）或配置文件
-3. 点 **「加入目录」**，在 **「默认模型」** 下拉里选中它，回到「文生图」即可生成。
+### 图片生成（image-gen）
 
-模型目录支持多条：添加、编辑、删除、设为默认、逐条测试连通性（只打 `/models`，**不扣费**）。
+「工具集」→「图片生成」→「设置」→ **「+ 添加模型组」**（组名 / API Key / 链接）→ **「获取模型」** 勾选后保存 → 选默认模型，回「文生图」即可。
+收藏不是第二个目录：图片只有 `image-gen/images/` 一份，`favorites.json` 只存标记。
 
-### 接口规范
+契约、数据模型、错误码：[功能案-图片生成](./docs/功能案-图片生成.md) · 实现：[components/image-gen/README.md](./components/image-gen/README.md)
 
-生成只走**标准 OpenAI Images 接口**，没有任何厂商私有协议：
+### Token 用量与活跃度（token-usage）
 
-```http
-POST {API地址}/images/generations
-Authorization: Bearer {API密钥}
-Content-Type: application/json
+独立面板（order 50），不在「工具集」分页里。统计全部会话的 Token 与成本，价目三层合并
+（内置表 → 用户覆盖 → models.dev 同步），生图按张单独计费；近一年活跃度热力图按天聚合。
 
-{ "model": "<模型 id>", "prompt": "<提示词>", "n": 1, "size": "1024x1024" }
-```
+契约：[功能案-token用量](./docs/功能案-token用量.md) · 实现：[components/token-usage/README.md](./components/token-usage/README.md)
 
-- 图生图 / 编辑时追加 `"image": [<https URL 或 data URL>…]`（最多 9 张）。
-- 响应取 `data[].url`，或 `data[].b64_json`（会自动转存为本地文件）。
-- **绝不走 `chat/completions`**；不发送任何非标准字段。
+### 模型测试（model-test）
 
-### Agent 工具：`generate_image`
+目录来自 DSH 自己的模型路由（不引入任何第二套凭证）。可整批、整组或只测单个模型，
+看首字延迟 / 总耗时 / 每秒 token；能按模型名自动补 `temperature / maxTokens / reasoningEffort`，
+并可一键把参数写进 DSH 真实配置（`fill` 或 `replace`，带 revision CAS）。
 
-| 参数 | 说明 |
-| --- | --- |
-| `prompt` | 必填。详细提示词（主体、风格、场景、构图、光线） |
-| `size` | 输出像素尺寸：`1024x1024`（默认）、`1536x1024`、`1024x1536`、`1792x1024`、`1024x1792` |
-| `count` | 生成张数，1–4（默认 1） |
-| `image` | 可选参考图数组（图生图 / 编辑 / 多图合成），最多 9 张；每项为本地路径、`https://` URL 或 data URL |
+契约：[功能案-模型测试](./docs/功能案-模型测试.md) · 实现：[components/model-test/README.md](./components/model-test/README.md)
 
-返回 `ok`、`model`、`count`、`size`、`imageUrls`（图片 URL，约 24 小时有效）、
-`imageUrl`（首张）、`files`（本地落盘路径），部分失败时附 `partial`。
+### 通知（notifications）
 
-- 目录为空、或默认模型没有可用密钥时，工具**快速失败**并给出可操作提示，不会硬打上游。
-- 工具超时 6 分钟。
+订阅 16 类事件（会话完成、需要权限、模型失败、子智能体结局……），提醒只走**系统通知中心**
+（停留、点击跳回会话），应用内部不弹任何东西；面板是历史记录与场景开关。未读状态与去重计数落
+`notifications/queue.json`，重启不丢。
 
-### 侧边栏面板
+契约：[功能案-通知](./docs/功能案-通知.md) · 实现：[components/notifications/README.md](./components/notifications/README.md)
 
-| 区域 | 内容 |
-| --- | --- |
-| 左栏 · 最近生成 | 缩略图墙，分页加载（每页 48，滚到底自动续）；点击放大、收藏、删除、下载 |
-| 左栏 · 收藏库 | 与「最近生成」同构，收藏落在独立目录 |
-| 左栏 · 提示词库 | 常用提示词的增删改；每条可挂「已生成的图片」，可「加为风格」或「替换主体」 |
-| 右栏 · 文生图 | 五段式表单 + 尺寸 / 张数，一键生成（不经过 Agent 对话） |
-| 右栏 · 图生图 | 上传参考图、从左栏拖入缩略图、或填 URL / 本机路径，再写编辑指令 |
-| 右栏 · 设置 | 模型目录：条目、密钥、连通性测试 |
+### MCP 管理（mcp）
 
-生成表单的五段（后两段可选，留空不拼进提示词）：
+列出当前 profile `cordis.patch.yml` 里所有 MCP server（含 disabled），支持新增 / 编辑 / 删除 /
+启停与一次性探活；写 YAML 时字节级保留 `!!js` 与注释，密钥默认脱敏，`reveal=1` 才给原文。
 
-```
-主体 → 风格（可叠加多条）→ 构图与视角：… → 光线与氛围：… → 不要：…
-```
+契约与错误码：[功能案-mcp管理](./docs/功能案-mcp管理.md) · 实现：[components/mcp/README.md](./components/mcp/README.md)
 
-- 负面以「不要：…」追加；输入本身已以「不要 / 避免 / Avoid」开头时原样保留，不会重复。
-- 灯箱支持 `←` / `→` 切换、`Esc` 关闭。
+### Skill 管理（skill）
 
-### 数据落地
+六个扫描根全量列出（坏文件也列并给出原因），可写根内新增 / 编辑 / 删除 / 启停；保存前按官方规则
+校验 frontmatter，磁盘是真相、官方服务只是旁证。
 
-- 生成图统一落盘到**数据目录** `$DSH_HOME/dsh-toolkit/images/`（收藏 `$DSH_HOME/dsh-toolkit/favorites/`，
-  固定与生成图目录同级），**不写入项目目录**；`IMAGE_GEN_DIR` 可整体改到别处（支持 `~` 展开）。
-  `$DSH_HOME` 未设时回退 `~/.dsh`，本机默认即 `~/.dsh/dsh-toolkit/`。
-- 生成逐张串行（接口对并发不友好），单张失败不影响其余；落盘失败静默跳过，仍然返回图片 URL。
+契约：[功能案-skill管理](./docs/功能案-skill管理.md) · 实现：[components/skill/README.md](./components/skill/README.md)
 
-### 提示词库
+### 工具集壳（toolkit）
 
-- 库文件：`$DSH_HOME/dsh-toolkit/library.json`（`IMAGE_GEN_LIBRARY` 可改）。
-- 每条记录：`{ id, title, text, size, images: [图片名…], createdAt, updatedAt }`；
-  `title` 缺省取正文前 24 字符。
+侧边栏只留一条「工具集」，点开后在面板顶部切分页：图片生成 / 模型测试 / 通知 / MCP / Skill / 设置。
+切走的分页会卸载（未保存表单重置）；「设置」是壳内置的只读页，显示各组件数据落在哪、是否已创建、
+多大、何时改过。
 
----
-
-## 组件二：Token 用量与活跃度（token-usage）
-
-统计 DSH **全部会话**（含 subagent）的 Token 用量与成本。数据来自会话事件流，不额外埋点；
-live 会话、持久化会话、subagent 会话三路合并，持久化会话按 revision 增量缓存，事件到达即失效缓存。
-
-### 面板「Token 用量」
-
-- 顶部：`真实消耗 Tokens` 总量、`总请求数`、`总成本`；时间范围可切
-  `今天`（默认）/ `7 天` / `30 天` / `90 天` / `全部` / **自定义时间段**；成本可切 `$ 美元` / `¥ 人民币`；
-  主数据 15 秒轮询，另有手动「刷新」。
-- 指标卡：`新增输入`、`输出`、`缓存创建`、`缓存命中`、`推理`、`缓存命中率`（带进度条）。
-- **活跃度**：近一年按天的热力图（按当日请求数着色），显示活跃天数与日期区间。
-- **模型分布**：`模型 / 请求 / 输入 / 输出 / 缓存读 / 缓存写 / 总量 / 成本 / 占比`。
-- **使用趋势**：双 Y 轴折线（左 Token、右成本），各指标独立画线，从每条线自身第一个非 0 点起笔。
-- **请求查看**：按会话聚合（`会话 / 请求 / 输入 / 输出 / 缓存命中 / 总量 / 成本 / 最后活动`），
-  可按 `全部来源 / 主会话 / 子会话` 过滤、按标题 / ID / 路径搜索，点行展开到**单次请求**明细。
-- **计价明细**：折叠区，展开后可增改删价目、同步 models.dev、设置汇率；
-  默认「只看在用」（仅显示实际用过的模型），可一键切回全量。
-
-### 计价：三层合并 + 图片生成按张，自带价目表
-
-1. **内置表打底**：`components/token-usage/pricing-defaults.mjs` 随插件分发（79 条，美元 / 每百万 Token），永远可用。
-2. **插件自有价目文件** `$DSH_HOME/dsh-toolkit/token-usage/pricing.json`（`TOKEN_USAGE_PRICING` 可改）覆盖内置表，条目分两种来源：
-   - `source: 'user'` — 面板里手工添加 / 修改的价目，**同步永不覆盖**；
-   - `source: 'models-dev'` — 从 models.dev 同步写入，下次同步整体替换。
-3. **删除墓碑** `deletedModelIds` — 删过的条目（含内置表里的）不会被同步复活。
-
-文件缺失或损坏时只降级到内置表并在面板标注错误，不会把成本整体归零。
-
-- **同步 models.dev**：面板「⟳ 同步 models.dev」拉 `https://models.dev/api.json`（15 秒超时），
-  过滤非文本模型，ID 归一化后**只写入当前实际用过的模型**；匹配只取「精确 + 日期快照后缀」
-  （如 `-20250514`），家族变体不再被前缀扩散带进来。匹配不到就明确提示、不写任何价目。
-- **图片生成计费**：image-gen 模型配置了「每张单价」（`pricePerImage`，美元/张）即自动进入
-  计价明细（按张展示）与成本统计；每次成功生成记一条到 `$DSH_HOME/dsh-toolkit/usage.jsonl`
-  （`IMAGE_GEN_USAGE` 可改），面板「请求查看」里以伪会话行「图片生成」逐笔可查。未配价只记次数并标「未配价」。
-- **汇率**：默认 `7.2`，可在计价明细里改。数据一律**美元存储与计算**，换算只发生在显示层。
-- 需要对齐网关与 models.dev 的命名差异时，在 `components/token-usage/host.js` 的 `MODEL_ALIASES` 里登记。
-
-### 统计口径
-
-- `总量`（`loop`）= 输入 + 输出 + 缓存读 + 缓存写，与会话行、顶部汇总同口径。
-- `成本` = (输入 × 单价 + 输出 × 单价 + 缓存读 × 单价 + 缓存写 × 单价) ÷ 1,000,000。
-- 模型名未命中价目时成本记 0，该次请求标「未配价」。
+契约：[功能案-工具集壳](./docs/功能案-工具集壳.md) · 实现：[components/toolkit/README.md](./components/toolkit/README.md)
 
 ---
 
@@ -195,97 +136,107 @@ live 会话、持久化会话、subagent 会话三路合并，持久化会话按
 | 环境变量 | 作用 | 默认值 |
 | --- | --- | --- |
 | `DSH_TOOLKIT_DATA` | 整个数据目录换到别处（绝对路径，支持 `~` 展开） | `$DSH_HOME/dsh-toolkit` |
-| `IMAGE_GEN_DIR` | 生成图统一落盘目录（收藏固定在同级） | `$DSH_HOME/dsh-toolkit/images` |
-| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `$DSH_HOME/dsh-toolkit/config.json` |
-| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `$DSH_HOME/dsh-toolkit/library.json` |
-| `IMAGE_GEN_USAGE` | 生成计费记录文件 | `$DSH_HOME/dsh-toolkit/usage.jsonl` |
-| `CUSTOM_API_KEY` | 默认密钥来源（每条模型也可用自己的 `keyEnv`） | — |
+| `IMAGE_GEN_DIR` | 生成图统一落盘目录 | `$DSH_HOME/dsh-toolkit/image-gen/images` |
+| `IMAGE_GEN_CONFIG` | 模型目录配置文件 | `$DSH_HOME/dsh-toolkit/image-gen/config.json` |
+| `IMAGE_GEN_LIBRARY` | 提示词库文件 | `$DSH_HOME/dsh-toolkit/image-gen/library.json` |
+| `IMAGE_GEN_USAGE` | 生成计费记录文件 | `$DSH_HOME/dsh-toolkit/image-gen/usage.jsonl` |
+| `IMAGE_GEN_PROMPTS` | 图片提示词索引文件 | `$DSH_HOME/dsh-toolkit/image-gen/image-prompts.json` |
+| `IMAGE_GEN_FAVORITES` | 收藏索引文件 | `$DSH_HOME/dsh-toolkit/image-gen/favorites.json` |
+| `IMAGE_GEN_KEY_<组 id>` | 模型组自己的密钥（组间互不覆盖） | — |
 | `TOKEN_USAGE_PRICING` | token-usage 自有价目文件 | `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` |
+| `MODEL_TEST_PARAMS` | 模型测试的逐模型参数覆盖 | `$DSH_HOME/dsh-toolkit/model-test/params.json` |
+| `MODEL_TEST_PRESETS` | models.dev 同步下来的预设表 | `$DSH_HOME/dsh-toolkit/model-test/presets.json` |
 | `MODELS_DEV_API_URL` | models.dev 同步源（自检用） | `https://models.dev/api.json` |
-| `TOKEN_USAGE_DIAG` | 设为 `1` 才写 token-usage 诊断日志（排障用） | 关闭 |
+| `TOKEN_USAGE_DIAG` | 设为 `1` 才写 token-usage 诊断日志 | 关闭 |
+| `NOTIFICATIONS_CONFIG` | 通知配置（总开关 / 阈值 / 16 类场景开关） | `$DSH_HOME/dsh-toolkit/notifications/config.json` |
+| `NOTIFICATIONS_QUEUE` | 通知队列（未读状态、去重计数） | `$DSH_HOME/dsh-toolkit/notifications/queue.json` |
+| `NOTIFICATIONS_NATIVE` | 设为 `off` 关掉系统通知通道，只留站内记录（自检用） | 开启 |
 | `DSH_HOME` | DSH Home 位置（决定默认数据目录） | `~/.dsh` |
 
-`DSH_TOOLKIT_DATA` 换掉整个数据目录，其余变量逐项覆盖单个路径。`$DSH_HOME` 的取值：先读环境变量
-`DSH_HOME`（空白字符串视为未设，值支持 `~` 展开），未设则回退 `~/.dsh`。
+`DSH_TOOLKIT_DATA` 换掉整个数据目录，其余变量逐项覆盖单个路径。`$DSH_HOME` 先读环境变量（空白视为未设，
+支持 `~`），未设则回退 `~/.dsh`。密钥解析顺序：配置文件 `keys[keyEnv]` → DSH 凭据库 → 环境变量 `keyEnv`。
+
+---
 
 ## 数据落地
 
-运行时数据默认收在 `$DSH_HOME/dsh-toolkit/` 下（本机即 `~/.dsh/dsh-toolkit/`）：
+运行时数据**按组件分目录**收在 `$DSH_HOME/dsh-toolkit/`（本机即 `~/.dsh/dsh-toolkit/`），组件之间不共用文件：
 
 | 路径 | 内容 |
 | --- | --- |
-| `$DSH_HOME/dsh-toolkit/images/` | 生成图统一目录（文件名形如 `image-gen-<UTC 时间戳>-<序号>.png`） |
-| `$DSH_HOME/dsh-toolkit/favorites/` | 收藏图（收藏即复制一份，取消收藏只删这里；固定与 `images/` 同级） |
-| `$DSH_HOME/dsh-toolkit/config.json` | 模型目录（`models` / `defaultId` / `keys`），权限 0600 |
-| `$DSH_HOME/dsh-toolkit/library.json` | 提示词库，权限 0600 |
-| `$DSH_HOME/dsh-toolkit/usage.jsonl` | 图片生成计费记录（每次成功生成一行） |
-| `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
-| `<系统临时目录>/dsh-token-usage-host.log` | token-usage 诊断日志（仅 `TOKEN_USAGE_DIAG=1` 时生成） |
+| `image-gen/images/` | 唯一图片目录（`image-gen-<UTC 时间戳>-<序号>.png`） |
+| `image-gen/favorites.json` | 收藏索引（`{ version: 1, images: { 文件名: { favoritedAt } } }`），0600 |
+| `image-gen/config.json` | 模型目录 v2（`version` / `providers` / `models` / `defaultId` / `keys`），0600 |
+| `image-gen/library.json` | 提示词库，0600 |
+| `image-gen/usage.jsonl` | 图片生成计费记录（每次成功生成一行） |
+| `image-gen/image-prompts.json` | 图片 → 提示词索引，0600 |
+| `token-usage/pricing.json` | 用户价目 + models.dev 同步结果 + 汇率 + 删除墓碑 |
+| `model-test/params.json` | 逐模型参数覆盖 |
+| `model-test/presets.json` | models.dev 预设表（同步结果） |
+| `notifications/config.json` | 通知配置，0600 |
+| `notifications/queue.json` | 通知队列，重启不丢，0600 |
+| `<系统临时目录>/dsh-token-usage-host.log` | token-usage 诊断日志（仅 `TOKEN_USAGE_DIAG=1`） |
 
-### 一次性迁移
+`mcp` 与 `skill` **不占数据目录**：直接读写当前 profile 的 `cordis.patch.yml` 与 `skills/` 目录。
 
-新数据目录首次启动时自动迁移一次，之后启动读到标记即跳过。迁移是幂等的、启动时静默执行，
-失败不影响插件启动。
+### 没有自动迁移
 
-| 迁移目标（相对 `$DSH_HOME/dsh-toolkit/`） | 迁移源（按顺序取第一个存在的） |
-| --- | --- |
-| `images/` | `<插件根>/data/images` → `~/image-gen` |
-| `favorites/` | `<插件根>/data/favorites` → `~/image-gen-favorites` |
-| `config.json` | `<插件根>/data/config.json` → `$DSH_HOME/image-gen.json` → `~/.dsh/image-gen.json` |
-| `library.json` | `<插件根>/data/library.json` → `$DSH_HOME/image-gen-library.json` → `~/.dsh/image-gen-library.json` |
-| `usage.jsonl` | `<插件根>/data/usage.jsonl` |
-| `token-usage/pricing.json` | `<插件根>/data/token-usage/pricing.json` → `$DSH_HOME/token-usage/pricing.json` → `~/.dsh/token-usage/pricing.json` |
+插件**不会**在启动时搬运任何老数据。从旧的平铺布局升级过来时，需要保留就手工搬：
 
-- 触发条件：`$DSH_HOME/dsh-toolkit/.migrated` 标记不存在时执行；标记存在则直接跳过（秒退）。
-- 兜底：`<插件根>/data/` 里剩下的其它条目（例如 `archive/`）也逐个搬到新目录，老目录留空。
-- 目标位置已存在 → 跳过，绝不覆盖。
-- 同盘用 `rename`（秒完成、不拷字节）；跨盘才退化为复制后删源；失败时保留原文件、记入清单
-  且**不**写 `.migrated` 标记，下次启动重试。
-- 迁移前先在数据目录写 `.migration-backup-<时间戳>.json` 清单（记录每项的 source / target / status / 大小），
-  完成后原地更新为结果。
-- 对应的环境变量覆盖生效时（例如设了 `IMAGE_GEN_DIR`），该项不迁移。
-- 插件目录的 `data/` 不再是运行时数据目录，只作为迁移来源；`.gitignore` 仍忽略它（老目录可能还留着空壳）。
+```bash
+mkdir -p ~/.dsh/dsh-toolkit/image-gen
+mv ~/.dsh/dsh-toolkit/images/*            ~/.dsh/dsh-toolkit/image-gen/images/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/config.json         ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/library.json        ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/usage.jsonl         ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/image-prompts.json  ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+```
+
+老版 `favorites/` 目录不必搬：把图放回 `image-gen/images/` 后重新点一次收藏即可。
+搬完用「工具集 → 设置」刷新核对实际落点。
 
 ---
 
 ## HTTP 接口
 
-面板与 Agent 之外的集成方可以直接调用这些路由（由插件经 `ctx.connection.fetch.register` 注册）。
+面板与 Agent 之外可以直接调这些路由（由插件经 `ctx.connection.fetch.register` 注册）。
+每个接口的入参、返回字段与错误码写在对应功能案的「接口契约」一节。
 
-### image-gen
+| 前缀 | 组件 | 契约 |
+| --- | --- | --- |
+| `/api/image-gen` | image-gen | [功能案-图片生成](./docs/功能案-图片生成.md) |
+| `/api/token-usage` | token-usage | [功能案-token用量](./docs/功能案-token用量.md) |
+| `/api/model-test` | model-test | [功能案-模型测试](./docs/功能案-模型测试.md) |
+| `/api/notifications` | notifications | [功能案-通知](./docs/功能案-通知.md) |
+| `/api/mcp` | mcp | [功能案-mcp管理](./docs/功能案-mcp管理.md) |
+| `/api/skill` | skill | [功能案-skill管理](./docs/功能案-skill管理.md) |
+| `/api/toolkit` | toolkit | [功能案-工具集壳](./docs/功能案-工具集壳.md) |
 
-| 方法与路径 | 说明 |
-| --- | --- |
-| `GET /api/image-gen` | 分页列出已保存图片（`offset` / `limit`，默认 24、上限 60） |
-| `GET /api/image-gen/file?name=` | 读取单张图 |
-| `POST /api/image-gen/delete` | `{ name }` 删除图片 |
-| `GET /api/image-gen/favorites` | 收藏分页列表 |
-| `GET /api/image-gen/favorites/file?name=` | 读取收藏图 |
-| `POST /api/image-gen/favorite` | `{ name }` 收藏 |
-| `POST /api/image-gen/unfavorite` | `{ name }` 取消收藏 |
-| `GET /api/image-gen/config` | 脱敏后的模型目录视图（含密钥状态与来源，不含明文） |
-| `POST /api/image-gen/config` | `action: setDefault` / `add` / `remove` |
-| `POST /api/image-gen/config/test` | 连通性自检（只打 `/models`，不扣费）；带 `id` 时按条目测 |
-| `POST /api/image-gen/config/models` | 探测服务端模型列表，只列识别出的生图模型 |
-| `POST /api/image-gen/generate` | 面板生图 / 图生图（与 `generate_image` 共用同一条链路） |
-| `GET` / `POST` `/api/image-gen/library` | 提示词库读取与写入（`action: upsert` / `delete` / `tag`） |
-
-所有按名字取文件的接口都先 `basename()` 再比对白名单
-`/^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i`，用于阻断目录穿越。
-
-### token-usage
-
-| 方法与路径 | 说明 |
-| --- | --- |
-| `GET /api/token-usage` | 全量统计；`range=today\|7d\|30d\|90d\|all\|custom`，自定义配 `start` / `end`，`force=true` 跳过缓存 |
-| `GET /api/token-usage/summary` | 只要汇总数字 |
-| `GET /api/token-usage/pricing` | 价目表与来源（`builtin` / `overrides` / `sync` / `exchangeRate` / `error`） |
-| `POST /api/token-usage/pricing` | `{ action: 'upsert' \| 'delete' \| 'sync' \| 'rate' }` |
-| `GET /api/token-usage/activity` | 近一年逐日活跃度（请求数 + Token 数） |
+所有按名字取文件的接口都先 `basename()` 再比对白名单 `/^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i`，用于阻断目录穿越。
 
 ---
 
-## 开发者
+## 开发与自检
+
+```bash
+npm run build     # node build.mjs —— 改了任何 components/*/client.js 之后必须跑
+npm run check     # node tools/check-client.mjs —— 改完必跑
+npm run scrub     # node tools/scrub-check.mjs —— 上传前脱敏扫描（工作区 + git 历史）
+npm test          # build + check
+```
+
+自检分五段，细节见命令行输出：
+
+1. **静态**：抓 `components/*/client.js` 里的自引用 TDZ 与暗色下会消失的配色。
+2. **客户端渲染冒烟**：用最小 React 桩渲染七个面板，覆盖加载 / 空 / 错误 / 各交互分支。
+3. **Host 冒烟**：在 stub ctx 上真跑各组件 `apply()`，断言 `generate_image` schema、全部路由与状态码、
+   模型测试的三种结论、token-usage 的统计与价目合并；通知单独一段（`[3b]`）逐个触发 16 类事件。
+4. **MCP 真实读写（`[3b]`）**：沙箱假 patch 上真跑增删改启停，断言 `!!js` / 块标量 / 注释字节级保真、
+   密钥默认脱敏、错误分支与 `applied:false`；**全程只动临时目录**。
+5. **数据目录（`[4]`）**：默认路径与环境变量覆盖、收藏索引行为、`migrate.js` 已删、
+   `toolkit` 的 `GET /api/toolkit/settings` 组件清单与存在性。
+
+自检不触网、不弹系统通知（`NOTIFICATIONS_NATIVE=off`），产物写在仓库根 `.selfcheck-*.json`（已忽略）。
 
 ### 目录结构
 
@@ -296,48 +247,28 @@ dsh-toolkit/
 ├── build.mjs              # 把 components/*/client.js 拼成统一 client 产物
 ├── cordis.patch.yml       # 单一 Loader source，指向当前 live-entry
 ├── live-entry-N.js        # 当前生效的 Host 入口（N 递增以绕过模块缓存）
-├── tools/check-client.mjs # 自检：静态 + 渲染冒烟 + host 冒烟
-└── components/
-    ├── image-gen/         # 生成：config / generate / library / 各路由 / client / host
-    └── token-usage/       # 用量：host（统计 + 价目）/ activity / client / pricing-defaults.mjs
+├── docs/                  # 各组件功能案（需求 / 契约 / 验收口径）
+├── tools/check-client.mjs # 自检
+├── tools/scrub-check.mjs  # 上传前脱敏扫描
+└── components/            # image-gen / mcp / model-test / notifications / skill / toolkit / token-usage
 ```
-
-### 构建与自检
-
-```bash
-npm run build     # node build.mjs —— 改了任何 components/*/client.js 之后必须跑
-npm run check     # node tools/check-client.mjs —— 改完必跑
-npm test          # 二者串跑
-```
-
-自检分三段：
-
-1. **静态**：扫 `components/*/client.js`，抓 `const X = … X …` 这类自引用（TDZ 会在运行时炸整个面板）。
-2. **客户端渲染冒烟**：用最小 React 桩递归渲染两个组件真实的 Panel，覆盖加载中 / 已加载 / 自定义区间 /
-   读取失败 / 空数据 / 灯箱放大 / 空画廊等分支，并**断言关键组件确实被渲染过**。
-3. **Host 冒烟**：在 stub ctx 上真跑各组件的 `apply()`，断言 `generate_image` 的参数与输出 schema、
-   全部路由及其状态码（含目录穿越防护）、模型目录增删改与空目录行为、提示词库读写；
-   另跑 token-usage 的 scan 与价目合并（本地 HTTP server 模拟 models.dev）。**全程不触网**，
-   自检写的是仓库根的 `.selfcheck-*.json`（已被 `.gitignore` 忽略）。
 
 ### 热更新（不重启 DSH）
 
-Host 代码改动后 Node 模块缓存不会失效，必须换一个新的入口文件：
+Host 代码改动后 Node 模块缓存不会失效，必须换新入口，并用 `?v=N` 更新共享模块的导入 URL：
 
 ```js
 // live-entry-N.js
 import { apply } from './components/token-usage/host.js?v=N'   // ?v=N 是关键
 ```
 
-再把 `cordis.patch.yml` 指向 `./live-entry-N.js`，然后 `plugin_manager` 的
-`remove_bundle` → `install_bundle`。只改客户端时 `node build.mjs` 后刷新页面即可。
-
-两条铁律：
-
-1. **入口 URL 一旦 import 失败就被 ESM 记死**（模块记录按 resolved URL 缓存，失败同样缓存）：
-   修好代码后必须换一个**全新的文件名**，否则仍报 `failed to import`。
-2. **共享模块的导入行也要带 `?v=N`**：`?v=N` 只让带 query 的模块拿到新实例，组件内部不带 query 的
-   `import './generate.js'` 会命中旧实例，报 `does not provide an export named …`。
+- 把仓库的 `cordis.patch.yml` 指向新的 `./live-entry-N.js`，`.gitignore` 里那条例外同步改成新的 N
+  （自检会核对两者一致）。
+- 换入口后**别把旧入口留在磁盘上**：组合树可能还钉在旧文件上，而旧入口一旦 `import` 了已删除的模块，
+  整个插件激活失败、所有 `/api/*` 变成 404。自检会逐个 `import()` 磁盘上的入口提前抓这个。
+- 让运行中的进程读到新入口：重启 DSH，或在 `~/.dsh/profiles/<profile>/cordis.patch.yml` 末尾追加一行注释
+  触发组合树重解析。
+- 只改客户端时跑 `node build.mjs`，`dsh-client-hmr` 会推 `rebuilt` 让页面替换模块；未连接热更新时刷新页面。
 
 ---
 

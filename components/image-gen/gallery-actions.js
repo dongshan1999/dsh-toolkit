@@ -1,10 +1,12 @@
 import { unlink } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
-import { scanImageDirs } from './generate.js?v=37'
+import { forgetFavorites } from './favorites.js?v=44'
+import { scanImageDirs } from './generate.js?v=44'
+import { forgetImagePrompts } from './prompts.js?v=44'
 
 export const name = 'image-gen-actions'
-export const inject = ['connection', 'sessions']
+export const inject = ['connection', 'sessions', 'timer']
 
 const IMAGE_NAME = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i
 
@@ -45,6 +47,9 @@ export function apply(ctx) {
               if (!IMAGE_NAME.test(name)) return json({ ok: false, message: '非法文件名' }, 400)
               const deleted = await deleteSaved(scanImageDirs(ctx), name)
               if (deleted === 0) return json({ ok: false, message: '文件不存在' }, 404)
+              // 图片没了，提示词索引与收藏标记也一并清掉，免得越攒越多。
+              await forgetImagePrompts([name])
+              await forgetFavorites([name])
               return json({ ok: true, name, deleted })
             } catch (cause) {
               return json({ ok: false, message: String(cause?.message || cause) }, 500)

@@ -2,7 +2,7 @@
   "name": "dsh-toolkit",
   "version": "0.2.0",
   "type": "module",
-  "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）与 Token 用量、成本、活跃度面板。",
+  "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）、Token 用量/成本/活跃度面板，模型连接与速度测试面板（支持整批 / 整组 / 组内单个模型）、通知面板（会话完成 / 需要权限 / 模型失败 / 子智能体等 16 类事件，支持系统级通知），以及 MCP server 与 Skill 管理面板（增删改查 / 启停 / 连接测试 / frontmatter 校验）。",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -20,17 +20,31 @@
     "image-generation",
     "text-to-image",
     "token-usage",
-    "cost-tracking"
+    "cost-tracking",
+    "model-test",
+    "latency",
+    "notifications",
+    "desktop-notification",
+    "mcp",
+    "model-context-protocol",
+    "skill",
+    "skill-management"
   ],
   "scripts": {
     "build": "node build.mjs",
     "check": "node tools/check-client.mjs",
-    "test": "node build.mjs && node tools/check-client.mjs"
+    "test": "node build.mjs && node tools/check-client.mjs",
+    "scrub": "node tools/scrub-check.mjs"
   },
   "exports": {
     ".": "./index.js",
     "./image-gen": "./components/image-gen/host.js",
+    "./model-test": "./components/model-test/host.js",
+    "./notifications": "./components/notifications/host.js",
     "./token-usage": "./components/token-usage/host.js",
+    "./mcp": "./components/mcp/host.js",
+    "./skill": "./components/skill/host.js",
+    "./toolkit": "./components/toolkit/host.js",
     "./client": "./client.js",
     "./package.json": "./package.json"
   },

@@ -2,35 +2,44 @@
 
 [简体中文](./README.md) | **English**
 
-A DSH (DeepSeek Harness) Web bundle that ships two independent things in one package:
+A DSH (DeepSeek Harness) Web bundle that packs six independent concerns into one package, and folds five of the panels behind a
+single "Toolkit" sidebar entry.
 
-| Component | Sidebar panel | Tool exposed to the agent | What it solves |
+| Component | Panel | Agent tool | In one line |
 | --- | --- | --- | --- |
-| **image-gen** | 「图片生成」 (Image generation, order 49) | `generate_image` | Generate and edit images through any OpenAI-compatible image API, and manage the gallery and prompt library |
-| **token-usage** | 「Token 用量」 (Token usage, order 50) | — | Token and cost accounting across every session, plus a one-year activity heatmap |
+| **image-gen** | Toolkit → Image generation | `generate_image` | Generate / edit images through any OpenAI-compatible endpoint; manages gallery, prompts and favorites |
+| **token-usage** | "Token usage" (order 50, standalone panel) | — | Token spend and cost across every session, plus a one-year activity heatmap |
+| **model-test** | Toolkit → Model test | — | Connectivity, first-token latency and output speed for models DSH already routes; fills their parameters |
+| **notifications** | Toolkit → Notifications | — | Alert hub for 16 event types; alerts go to the OS notification center only, never inside the app |
+| **mcp** | Toolkit → MCP | — | List / add / edit / delete / enable / probe the MCP servers in the profile's `cordis.patch.yml` |
+| **skill** | Toolkit → Skill | — | Browse, edit, create, delete and toggle skills across six scan roots |
+| **toolkit** | Toolkit (order 48) | — | Collects the five panels above into one shell, plus a built-in read-only Settings tab |
 
-The two halves are independent: they use different panel keys (`image-gen` / `token-usage`) and different
-route prefixes, and can be enabled separately.
+Each business component can be enabled on its own: panel keys (`image-gen` / `token-usage` / `model-test` / `notifications` /
+`mcp` / `skill`) and route prefixes differ. The Toolkit is a shell: the browser side owns the sidebar entry and the tab switch, while the Host side
+has one read-only settings route.
 
-> **Design principle: no vendor lock-in.** The plugin ships no vendor models, no default endpoint and no
-> private gateway — the model catalog is entirely built by you. Anything that implements the standard
-> `POST /images/generations` can be plugged in.
+> **Design principle: no vendor lock-in.** The plugin ships no vendor models, no default endpoint, no private gateway —
+> you add the catalog yourself, and any service implementing `POST /images/generations` works. `model-test` follows the same
+> rule: it only tests models **DSH already routes**, and never introduces a second set of credentials or endpoints.
 
-| Requirement | Value |
+| Item | Requirement |
 | --- | --- |
-| DSH | **0.1.7 or newer** (verified on `0.1.7-rc.2`) |
+| DSH | **0.1.7 or newer** (verified against `0.1.7-rc.2`) |
 | Runtime | DSH Web (`client.platform: web`), Node.js 18+ |
 | License | [MIT](./LICENSE) |
 
-The UI ships Chinese strings. In this document UI labels are quoted verbatim inside 「」 with a short English gloss.
+The UI ships in Simplified Chinese; UI strings, file names, routes and identifiers are kept verbatim throughout these docs.
+
+Documentation has two layers: this README is the **onboarding and index**; each component's requirements, constraints, API
+contract and acceptance criteria live in its feature spec under [`docs/`](./docs/), and implementation notes live in that
+component's own `README.md`.
 
 ---
 
 ## Installation
 
-### Prerequisite
-
-- DSH **0.1.7+** with a Web profile (by default under `~/.dsh/profiles/<profile>/`).
+DSH **0.1.7+** with a Web profile (by default under `~/.dsh/profiles/<profile>/`).
 
 ### Option 1 — install as a dependency (recommended)
 
@@ -53,8 +62,8 @@ The UI ships Chinese strings. In this document UI labels are quoted verbatim ins
    }
    ```
 
-2. Let DSH load it: call `plugin_manager` with `install_bundle` (target `dsh-toolkit`), or restart DSH.
-   If it answers `application: restart-required`, restart and it will take effect.
+2. Let DSH load it: call `plugin_manager`'s `install_bundle` (target `dsh-toolkit`), or restart DSH.
+   If it returns `application: restart-required`, it takes effect after the restart.
 
 ### Option 2 — local link (development)
 
@@ -62,140 +71,77 @@ The UI ships Chinese strings. In this document UI labels are quoted verbatim ins
 "dependencies": { "dsh-toolkit": "link:/absolute/path/to/dsh-toolkit" }
 ```
 
-> ⚠️ `remove_bundle` also strips **both** declarations from the profile's `package.json`.
-> Add them back before reinstalling, otherwise the package manager will look for a `link:` package
-> on the registry and fail.
+> ⚠️ `remove_bundle` deletes **both** declarations above from the profile's `package.json`. Add them back before reinstalling,
+> otherwise the package manager looks for the `link:` package in the registry and fails.
 
 ---
 
-## Component 1: Image generation (image-gen)
+## Components at a glance
 
-### Set up in three steps
+One starting point per component; details live in the feature spec and the component README.
 
-1. Open the sidebar panel **「图片生成」 → 「设置」** (Image generation → Settings).
-2. Click **「+ 添加模型」** (Add model) and fill in:
-   - **API 地址** (API address): e.g. `https://your-gateway.example.com/v1`
-   - **模型 id** (Model id): the upstream model name; use **「获取可用模型」** to probe `/models` and pick one
-   - **API 密钥** (API key): stored in the DSH credential store (preferred) or the config file
-3. Click **「加入目录」** (Add to catalog), pick it in the **「默认模型」** dropdown, and generate.
+### Image generation (image-gen)
 
-The catalog holds any number of models: add, edit, delete, set default, and test each one's connectivity
-(only hits `/models` — **never billed**).
+Toolkit → Image generation → Settings → **"+ Add model group"** (group name / API key / base URL) → **"Fetch models"**, tick the
+ones you want and save → pick a default model, then go back to "Text to image". Favorites are not a second directory: images
+exist once in `image-gen/images/`, and `favorites.json` only stores marks.
 
-### API contract
+Contract, data model, error codes: [功能案-图片生成](./docs/功能案-图片生成.md) · implementation:
+[components/image-gen/README.md](./components/image-gen/README.md)
 
-Generation always uses the **standard OpenAI Images API** — no vendor-specific protocol:
+### Token usage and activity (token-usage)
 
-```http
-POST {api base URL}/images/generations
-Authorization: Bearer {api key}
-Content-Type: application/json
+A standalone panel (order 50), not one of the Toolkit tabs. Counts tokens and cost across all sessions; pricing merges three
+layers (built-in table → user overrides → models.dev sync) and image generation is billed per image. The one-year heatmap
+aggregates per day.
 
-{ "model": "<model id>", "prompt": "<prompt>", "n": 1, "size": "1024x1024" }
-```
+Contract: [功能案-token用量](./docs/功能案-token用量.md) · implementation:
+[components/token-usage/README.md](./components/token-usage/README.md)
 
-- For img2img / editing, add `"image": [<https URL or data URL>…]` (up to 9).
-- The response is read from `data[].url`, or `data[].b64_json` (converted to a local file automatically).
-- It **never calls `chat/completions`** and never sends non-standard fields.
+### Model test (model-test)
 
-### Agent tool: `generate_image`
+The catalog comes from DSH's own routing (no second set of credentials). Test everything, one group, or a single model, and
+read first-token latency / total time / tokens per second; parameters (`temperature / maxTokens / reasoningEffort`) are filled
+in from the model name, and can be written into the real DSH config (`fill` or `replace`, with revision CAS).
 
-| Parameter | Meaning |
-| --- | --- |
-| `prompt` | Required. Detailed prompt (subject, style, scene, composition, lighting) |
-| `size` | Output pixel size: `1024x1024` (default), `1536x1024`, `1024x1536`, `1792x1024`, `1024x1792` |
-| `count` | Number of images, 1–4 (default 1) |
-| `image` | Optional reference images (img2img / edit / composition), up to 9; each is a local path, an `https://` URL, or a data URL |
+Contract: [功能案-模型测试](./docs/功能案-模型测试.md) · implementation:
+[components/model-test/README.md](./components/model-test/README.md)
 
-The result carries `ok`, `model`, `count`, `size`, `imageUrls` (valid ~24 hours), `imageUrl`,
-`files` (saved paths) and `partial` when some images failed.
+### Notifications (notifications)
 
-- An empty catalog, or a default model without a usable key, **fails fast** with an actionable message
-  instead of hammering the upstream API.
-- Tool timeout: 6 minutes.
+Subscribes to 16 event types (session finished, approval needed, model failure, sub-agent outcome, …). Alerts go through the
+**OS notification center** only (they persist and click back into the session); nothing pops up inside the app. The panel is
+history plus per-scenario switches. Unread state and dedupe counters live in `notifications/queue.json` and survive restarts.
 
-### Sidebar panel
+Contract: [功能案-通知](./docs/功能案-通知.md) · implementation:
+[components/notifications/README.md](./components/notifications/README.md)
 
-| Area | Contents |
-| --- | --- |
-| Left · 「最近生成」 (recent) | Thumbnail wall, 48 per page, auto-continues near the bottom; click to enlarge, favorite, delete, download |
-| Left · 「收藏库」 (favorites) | Same shape, backed by a separate directory |
-| Left · 「提示词库」 (prompt library) | Reusable prompts with the images they produced; can feed the form via 「加为风格」 or 「替换主体」 |
-| Right · 「文生图」 (text2img) | A five-part form plus size / count, generating without the agent |
-| Right · 「图生图」 (img2img) | Upload references, drag thumbnails in from the left column, or paste a URL / local path |
-| Right · 「设置」 (settings) | The model catalog: entries, keys, connectivity checks |
+### MCP management (mcp)
 
-The generation form has five parts (the last two optional):
+Lists every MCP server in the current profile's `cordis.patch.yml` (including disabled ones) and supports add / edit / delete /
+toggle / one-shot probe. YAML edits preserve `!!js` tags and comments byte for byte; secrets are masked by default and only
+returned in plaintext with `reveal=1`.
 
-```
-subject → style (stackable) → 构图与视角: … → 光线与氛围: … → 不要: …
-```
+Contract and error codes: [功能案-mcp管理](./docs/功能案-mcp管理.md) · implementation:
+[components/mcp/README.md](./components/mcp/README.md)
 
-- The negative part is appended as `不要：…` ("do not: …"); input already starting with
-  `不要` / `避免` / `Avoid` is kept as-is.
-- The lightbox supports `←` / `→` and closes with `Esc`.
+### Skill management (skill)
 
-### Files and storage
+Lists every skill across six scan roots (broken files are listed with a reason) and supports create / edit / delete / toggle
+inside writable roots. Frontmatter is validated against the official rules before saving; disk is the source of truth and the
+official service is only a cross-check.
 
-- Generated images go to the **data directory**, `$DSH_HOME/dsh-toolkit/images/` (favorites to
-  `$DSH_HOME/dsh-toolkit/favorites/`, always a sibling of the image directory) — **never into a project
-  directory**. `IMAGE_GEN_DIR` relocates them (a leading `~` is expanded). When `DSH_HOME` is unset it
-  falls back to `~/.dsh`, so the local default is `~/.dsh/dsh-toolkit/`.
-- Generation is serial (the APIs dislike concurrency); one failure does not abort the rest, and a failed
-  disk write is skipped while the image URL is still returned.
+Contract: [功能案-skill管理](./docs/功能案-skill管理.md) · implementation:
+[components/skill/README.md](./components/skill/README.md)
 
-### Prompt library
+### Toolkit shell (toolkit)
 
-- File: `$DSH_HOME/dsh-toolkit/library.json` (`IMAGE_GEN_LIBRARY` overrides it).
-- Each record: `{ id, title, text, size, images: [names…], createdAt, updatedAt }`;
-  `title` defaults to the first 24 characters.
+The sidebar carries a single "Toolkit" entry; inside, tabs switch between Image generation / Model test / Notifications /
+MCP / Skill / Settings. A tab you leave is unmounted (unsaved forms reset). Settings is a built-in read-only page showing
+where each component's data lands, whether it exists, how large it is and when it last changed.
 
----
-
-## Component 2: Token usage and activity (token-usage)
-
-Counts Token usage and cost across **all DSH sessions** (subagents included), straight from the session
-event streams — no extra instrumentation. Live, persisted and subagent sessions are merged; persisted
-sessions are cached incrementally by revision and invalidated as soon as an event arrives.
-
-### Panel 「Token 用量」
-
-- Header: `真实消耗 Tokens` total, `总请求数`, `总成本`; range presets `今天` (default) / `7 天` / `30 天` /
-  `90 天` / `全部` / a custom range; costs switch between `$ 美元` and `¥ 人民币`; polls every 15 seconds.
-- Metric cards: `新增输入`, `输出`, `缓存创建`, `缓存命中`, `推理`, `缓存命中率`.
-- **活跃度 (activity)**: a one-year daily heatmap colored by request count.
-- **模型分布 (model breakdown)**: `模型 / 请求 / 输入 / 输出 / 缓存读 / 缓存写 / 总量 / 成本 / 占比`.
-- **使用趋势 (usage trend)**: dual-axis lines (tokens left, cost right), each series starting at its own
-  first non-zero point.
-- **请求查看 (requests)**: aggregated per session, filterable by source (all / main / subagent) and
-  searchable; expanding a row shows individual requests.
-- **计价明细 (pricing)**: a collapsed section to add / edit / delete prices, sync models.dev, and set the
-  exchange rate.
-
-### Pricing: three layers, ships with a table
-
-1. **Built-in table**: `components/token-usage/pricing-defaults.mjs` (79 entries, USD per million tokens),
-   always available.
-2. **The plugin's own price file** `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` (`TOKEN_USAGE_PRICING`
-   overrides the path) overrides the built-in table. Entries carry a source:
-   - `source: 'user'` — added or edited in the panel; **never overwritten by a sync**;
-   - `source: 'models-dev'` — written by a models.dev sync; replaced wholesale by the next sync.
-3. **Deletion tombstones** `deletedModelIds` — anything you deleted is not resurrected by a sync.
-
-A missing or corrupt file degrades to the built-in table and flags the error, instead of zeroing all costs.
-
-- **models.dev sync**: 「⟳ 同步 models.dev」 fetches `https://models.dev/api.json` (15-second timeout),
-  filters non-text models, normalizes ids, and writes **only models you have actually used**.
-- **Exchange rate**: defaults to `7.2`, editable in the pricing section. All data is **stored and computed
-  in USD**; conversion happens only in the display layer.
-- To align gateway names with models.dev names, register them in `MODEL_ALIASES` in
-  `components/token-usage/host.js`.
-
-### Accounting rules
-
-- `总量` (`loop`) = input + output + cache read + cache write.
-- Cost = (input × rate + output × rate + cache read × rate + cache write × rate) ÷ 1,000,000.
-- A model with no matching price costs 0 and its requests are marked `未配价` (unpriced).
+Contract: [功能案-工具集壳](./docs/功能案-工具集壳.md) · implementation:
+[components/toolkit/README.md](./components/toolkit/README.md)
 
 ---
 
@@ -203,159 +149,144 @@ A missing or corrupt file degrades to the built-in table and flags the error, in
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `DSH_TOOLKIT_DATA` | Relocate the entire data directory (absolute path, `~` expanded) | `$DSH_HOME/dsh-toolkit` |
-| `IMAGE_GEN_DIR` | Unified output directory (favorites live in the sibling dir) | `$DSH_HOME/dsh-toolkit/images` |
-| `IMAGE_GEN_CONFIG` | Model catalog config file | `$DSH_HOME/dsh-toolkit/config.json` |
-| `IMAGE_GEN_LIBRARY` | Prompt library file | `$DSH_HOME/dsh-toolkit/library.json` |
-| `IMAGE_GEN_USAGE` | Generation billing log file | `$DSH_HOME/dsh-toolkit/usage.jsonl` |
-| `CUSTOM_API_KEY` | Default key source (an entry may define its own `keyEnv`) | — |
-| `TOKEN_USAGE_PRICING` | Price file for token-usage | `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` |
-| `MODELS_DEV_API_URL` | models.dev sync source (used by self-checks) | `https://models.dev/api.json` |
-| `TOKEN_USAGE_DIAG` | Set to `1` to write token-usage diagnostics | off |
-| `DSH_HOME` | DSH Home location (determines the default data directory) | `~/.dsh` |
+| `DSH_TOOLKIT_DATA` | Move the whole data directory (absolute path, `~` expanded) | `$DSH_HOME/dsh-toolkit` |
+| `IMAGE_GEN_DIR` | Where generated images land | `$DSH_HOME/dsh-toolkit/image-gen/images` |
+| `IMAGE_GEN_CONFIG` | Model catalog file | `$DSH_HOME/dsh-toolkit/image-gen/config.json` |
+| `IMAGE_GEN_LIBRARY` | Prompt library file | `$DSH_HOME/dsh-toolkit/image-gen/library.json` |
+| `IMAGE_GEN_USAGE` | Generation billing log | `$DSH_HOME/dsh-toolkit/image-gen/usage.jsonl` |
+| `IMAGE_GEN_PROMPTS` | Image → prompt index | `$DSH_HOME/dsh-toolkit/image-gen/image-prompts.json` |
+| `IMAGE_GEN_FAVORITES` | Favorites index | `$DSH_HOME/dsh-toolkit/image-gen/favorites.json` |
+| `IMAGE_GEN_KEY_<group id>` | Per-group API key (groups never overwrite each other) | — |
+| `TOKEN_USAGE_PRICING` | token-usage's own price file | `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` |
+| `MODEL_TEST_PARAMS` | Per-model parameter overrides | `$DSH_HOME/dsh-toolkit/model-test/params.json` |
+| `MODEL_TEST_PRESETS` | models.dev presets (sync result) | `$DSH_HOME/dsh-toolkit/model-test/presets.json` |
+| `MODELS_DEV_API_URL` | models.dev sync source (self-check) | `https://models.dev/api.json` |
+| `TOKEN_USAGE_DIAG` | `1` enables token-usage diagnostics | off |
+| `NOTIFICATIONS_CONFIG` | Notification config (master switch / thresholds / 16 scenario switches) | `$DSH_HOME/dsh-toolkit/notifications/config.json` |
+| `NOTIFICATIONS_QUEUE` | Notification queue (unread state, dedupe counters) | `$DSH_HOME/dsh-toolkit/notifications/queue.json` |
+| `NOTIFICATIONS_NATIVE` | `off` disables the OS notification channel, keeping in-app history only (self-check) | on |
+| `DSH_HOME` | DSH home (determines the default data directory) | `~/.dsh` |
 
-`DSH_TOOLKIT_DATA` relocates the whole data directory, while the other variables override individual
-paths. `$DSH_HOME` is read from the `DSH_HOME` environment variable first (a blank string counts as
-unset, and a leading `~` is expanded) and falls back to `~/.dsh` when unset.
+`DSH_TOOLKIT_DATA` relocates the whole data directory; the other variables override one path each. `$DSH_HOME` is read from the
+environment first (blank counts as unset, `~` is expanded), falling back to `~/.dsh`. Key resolution order: config
+`keys[keyEnv]` → DSH credential store → environment variable `keyEnv`.
+
+---
 
 ## Files on disk
 
-Runtime data lives under `$DSH_HOME/dsh-toolkit/` by default (i.e. `~/.dsh/dsh-toolkit/` locally):
+Runtime data is split **per component** under `$DSH_HOME/dsh-toolkit/` (here: `~/.dsh/dsh-toolkit/`); components never share a file:
 
 | Path | Contents |
 | --- | --- |
-| `$DSH_HOME/dsh-toolkit/images/` | Unified output directory (`image-gen-<UTC stamp>-<index>.png`) |
-| `$DSH_HOME/dsh-toolkit/favorites/` | Favorited images (favoriting copies; unfavoriting only deletes here; always a sibling of `images/`) |
-| `$DSH_HOME/dsh-toolkit/config.json` | Model catalog (`models` / `defaultId` / `keys`), mode 0600 |
-| `$DSH_HOME/dsh-toolkit/library.json` | Prompt library, mode 0600 |
-| `$DSH_HOME/dsh-toolkit/usage.jsonl` | Image generation billing log (one line per successful generation) |
-| `$DSH_HOME/dsh-toolkit/token-usage/pricing.json` | User prices + models.dev sync results + exchange rate + tombstones |
-| `<system temp>/dsh-token-usage-host.log` | token-usage diagnostics (only when `TOKEN_USAGE_DIAG=1`) |
+| `image-gen/images/` | The only image directory (`image-gen-<UTC timestamp>-<seq>.png`) |
+| `image-gen/favorites.json` | Favorites index (`{ version: 1, images: { name: { favoritedAt } } }`), mode 0600 |
+| `image-gen/config.json` | Model catalog v2 (`version` / `providers` / `models` / `defaultId` / `keys`), 0600 |
+| `image-gen/library.json` | Prompt library, 0600 |
+| `image-gen/usage.jsonl` | Generation billing log (one line per successful generation) |
+| `image-gen/image-prompts.json` | Image → prompt index, 0600 |
+| `token-usage/pricing.json` | User prices + models.dev sync result + exchange rate + tombstones |
+| `model-test/params.json` | Per-model parameter overrides |
+| `model-test/presets.json` | models.dev presets (sync result) |
+| `notifications/config.json` | Notification config, 0600 |
+| `notifications/queue.json` | Notification queue, survives restarts, 0600 |
+| `<system temp>/dsh-token-usage-host.log` | token-usage diagnostics (only with `TOKEN_USAGE_DIAG=1`) |
 
-### One-time migration
+`mcp` and `skill` occupy **no data directory**: they read and write the current profile's `cordis.patch.yml` and `skills/` directly.
 
-The first start on the new data directory migrates the old data once; later starts see the marker and
-skip it. Migration is idempotent, runs silently at startup, and a failure never blocks the plugin.
+### No automatic migration
 
-| Target (relative to `$DSH_HOME/dsh-toolkit/`) | Sources (the first one that exists wins) |
-| --- | --- |
-| `images/` | `<plugin>/data/images` → `~/image-gen` |
-| `favorites/` | `<plugin>/data/favorites` → `~/image-gen-favorites` |
-| `config.json` | `<plugin>/data/config.json` → `$DSH_HOME/image-gen.json` → `~/.dsh/image-gen.json` |
-| `library.json` | `<plugin>/data/library.json` → `$DSH_HOME/image-gen-library.json` → `~/.dsh/image-gen-library.json` |
-| `usage.jsonl` | `<plugin>/data/usage.jsonl` |
-| `token-usage/pricing.json` | `<plugin>/data/token-usage/pricing.json` → `$DSH_HOME/token-usage/pricing.json` → `~/.dsh/token-usage/pricing.json` |
+The plugin **never** moves old data at startup. Coming from the old flat layout, move what you want to keep by hand:
 
-- Trigger: runs when the `$DSH_HOME/dsh-toolkit/.migrated` marker is absent; an existing marker exits at once.
-- Fallback: whatever else is left in `<plugin>/data/` (e.g. `archive/`) is moved entry by entry, leaving the
-  old directory empty.
-- A target that already exists is skipped and never overwritten.
-- On the same filesystem the move is a `rename` (instant, no bytes copied); only across filesystems does it
-  degrade to copy-then-delete. On failure the source files stay in place and are recorded in the manifest,
-  and the `.migrated` marker is **not** written, so the next start retries.
-- Before moving anything, a `.migration-backup-<timestamp>.json` manifest is written into the data
-  directory (source / target / status / size per item) and updated in place with the results.
-- When the matching environment variable override is in effect (e.g. `IMAGE_GEN_DIR` is set), that item is
-  not migrated.
-- The plugin's own `data/` is no longer the runtime data directory; it only serves as a migration source,
-  and `.gitignore` still ignores it (the old directory may be left as an empty shell).
+```bash
+mkdir -p ~/.dsh/dsh-toolkit/image-gen
+mv ~/.dsh/dsh-toolkit/images/*            ~/.dsh/dsh-toolkit/image-gen/images/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/config.json         ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/library.json        ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/usage.jsonl         ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+mv ~/.dsh/dsh-toolkit/image-prompts.json  ~/.dsh/dsh-toolkit/image-gen/ 2>/dev/null
+```
+
+The old `favorites/` directory need not be moved: put the images back under `image-gen/images/` and star them again.
+Afterwards, refresh Toolkit → Settings to confirm where everything landed.
 
 ---
 
 ## HTTP endpoints
 
-Integrations beyond the panel and the agent can call these routes directly (registered through
-`ctx.connection.fetch.register`).
+Panels and anything outside the agent can call these routes directly (registered through `ctx.connection.fetch.register`).
+Inputs, response fields and error codes are documented in each feature spec's "API contract" section.
 
-### image-gen
+| Prefix | Component | Contract |
+| --- | --- | --- |
+| `/api/image-gen` | image-gen | [功能案-图片生成](./docs/功能案-图片生成.md) |
+| `/api/token-usage` | token-usage | [功能案-token用量](./docs/功能案-token用量.md) |
+| `/api/model-test` | model-test | [功能案-模型测试](./docs/功能案-模型测试.md) |
+| `/api/notifications` | notifications | [功能案-通知](./docs/功能案-通知.md) |
+| `/api/mcp` | mcp | [功能案-mcp管理](./docs/功能案-mcp管理.md) |
+| `/api/skill` | skill | [功能案-skill管理](./docs/功能案-skill管理.md) |
+| `/api/toolkit` | toolkit | [功能案-工具集壳](./docs/功能案-工具集壳.md) |
 
-| Method and path | Purpose |
-| --- | --- |
-| `GET /api/image-gen` | Paged list of saved images (`offset` / `limit`, default 24, max 60) |
-| `GET /api/image-gen/file?name=` | Read a single image |
-| `POST /api/image-gen/delete` | `{ name }` — delete an image |
-| `GET /api/image-gen/favorites` | Paged favorites list |
-| `GET /api/image-gen/favorites/file?name=` | Read a favorited image |
-| `POST /api/image-gen/favorite` | `{ name }` — favorite |
-| `POST /api/image-gen/unfavorite` | `{ name }` — unfavorite |
-| `GET /api/image-gen/config` | Redacted catalog view (key status and source, never plaintext) |
-| `POST /api/image-gen/config` | `action: setDefault` / `add` / `remove` |
-| `POST /api/image-gen/config/test` | Connectivity check (only `/models`, never billed); pass `id` to test one entry |
-| `POST /api/image-gen/config/models` | Probe the provider's model list, keeping only image models |
-| `POST /api/image-gen/generate` | Panel text2img / img2img (shares one code path with `generate_image`) |
-| `GET` / `POST` `/api/image-gen/library` | Prompt library (`action: upsert` / `delete` / `tag`) |
-
-Every endpoint that reads a file by name runs `basename()` first and matches the allowlist
-`/^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i`, which blocks directory traversal.
-
-### token-usage
-
-| Method and path | Purpose |
-| --- | --- |
-| `GET /api/token-usage` | Full statistics; `range=today\|7d\|30d\|90d\|all\|custom` with `start` / `end`, `force=true` to skip the cache |
-| `GET /api/token-usage/summary` | Summary numbers only |
-| `GET /api/token-usage/pricing` | Price table and provenance (`builtin` / `overrides` / `sync` / `exchangeRate` / `error`) |
-| `POST /api/token-usage/pricing` | `{ action: 'upsert' \| 'delete' \| 'sync' \| 'rate' }` |
-| `GET /api/token-usage/activity` | Per-day activity for the last year |
+Every file-by-name endpoint runs `basename()` and then matches `/^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i`, which blocks path traversal.
 
 ---
 
-## For developers
+## Development and self-check
+
+```bash
+npm run build     # node build.mjs — required after editing any components/*/client.js
+npm run check     # node tools/check-client.mjs — required after any change
+npm run scrub     # node tools/scrub-check.mjs — pre-upload secret/PII scan (worktree + git history)
+npm test          # build + check
+```
+
+The self-check has five stages; the command output carries the detail:
+
+1. **Static**: self-referencing `const X = … X …` (TDZ) in `components/*/client.js`, and hard-coded `#fff` on brand backgrounds.
+2. **Client render smoke**: renders all seven panels with a minimal React stub across loading / empty / error / interaction branches.
+3. **Host smoke**: runs each component's `apply()` on a stub ctx — `generate_image` schema, every route and status code, model-test's
+   three verdicts, token-usage stats and pricing merge; notifications has its own stage (`[3b]`) firing all 16 event types.
+4. **MCP real read/write (`[3b]`)**: drives add/edit/delete/toggle against a sandboxed fake patch; asserts byte-level preservation of
+   `!!js` tags, block scalars and comments, masked secrets by default, error branches and `applied:false`; **only touches temp dirs**.
+5. **Data directory (`[4]`)**: default paths and env overrides, favorites index behaviour, `migrate.js` gone, and the `toolkit`
+   `GET /api/toolkit/settings` component list and existence flags.
+
+The check never touches the network and never fires an OS notification (`NOTIFICATIONS_NATIVE=off`); artifacts go to
+`.selfcheck-*.json` in the repo root (git-ignored).
 
 ### Layout
 
 ```
 dsh-toolkit/
 ├── index.js               # Host entry
-├── client.js              # ⚠️ generated by build.mjs — do not edit by hand
+├── client.js              # ⚠️ generated by build.mjs — do not edit
 ├── build.mjs              # concatenates components/*/client.js into the client artifact
-├── cordis.patch.yml       # the single Loader source, pointing at the active live-entry
-├── live-entry-N.js        # the active Host entry (N increments to dodge the module cache)
-├── tools/check-client.mjs # self-check: static + render smoke + host smoke
-└── components/
-    ├── image-gen/         # generation: config / generate / library / routes / client / host
-    └── token-usage/       # usage: host (accounting + pricing) / activity / client / pricing-defaults.mjs
+├── cordis.patch.yml       # single Loader source, points at the current live-entry
+├── live-entry-N.js        # active Host entry (N increments to bypass the module cache)
+├── docs/                  # per-component feature specs (requirements / contract / acceptance)
+├── tools/check-client.mjs # self-check
+├── tools/scrub-check.mjs  # pre-upload secret/PII scan
+└── components/            # image-gen / mcp / model-test / notifications / skill / toolkit / token-usage
 ```
-
-### Build and self-check
-
-```bash
-npm run build     # node build.mjs — required after touching any components/*/client.js
-npm run check     # node tools/check-client.mjs — required after any change
-npm test          # both, in order
-```
-
-The self-check has three stages:
-
-1. **Static**: scans `components/*/client.js` for `const X = … X …` self-references (a TDZ bug that takes
-   the whole panel down at runtime).
-2. **Client render smoke**: renders both real Panels with a minimal React stub across loading / loaded /
-   custom range / read failure / empty data / lightbox / empty gallery, and **asserts the key components
-   were actually rendered**.
-3. **Host smoke**: runs `apply()` of every host module against a stub ctx, asserting the `generate_image`
-   schemas, every route and its status codes (traversal protection included), catalog add/edit/remove and
-   empty-catalog behaviour, and prompt-library reads and writes; then runs token-usage's scan and price
-   merging against a local server standing in for models.dev. **Nothing touches the network**, and the
-   self-check writes only `.selfcheck-*.json` in the repo root (git-ignored).
 
 ### Hot reload (without restarting DSH)
 
-After a Host-side change, Node's module cache will not invalidate, so switch to a new entry file:
+Node's module cache will not invalidate a Host change, so switch to a new entry and bump the `?v=N` on shared imports:
 
 ```js
 // live-entry-N.js
 import { apply } from './components/token-usage/host.js?v=N'   // the ?v=N is the point
 ```
 
-Point `cordis.patch.yml` at `./live-entry-N.js`, then run `plugin_manager` `remove_bundle` →
-`install_bundle`. Client-only changes just need `node build.mjs` and a page refresh.
-
-Two rules that are not negotiable:
-
-1. **Once an entry URL fails to import, ESM remembers it** (module records are cached by resolved URL,
-   failures included): after fixing the code you must use a **brand-new file name**.
-2. **Shared modules' import lines need `?v=N` too**: `?v=N` only gives a fresh instance to modules that
-   carry the query; a component's internal `import './generate.js'` (no query) hits the old instance.
+- Point the repository's `cordis.patch.yml` at `./live-entry-N.js` and update the `.gitignore` exception to the same N
+  (the self-check asserts they agree).
+- **Don't leave the old entry on disk**: the Loader's composition tree may still be pinned to it, and once that old entry
+  imports a module you deleted, the whole plugin fails to activate and every `/api/*` turns into a 404. The self-check
+  `import()`s every entry on disk to catch this early.
+- To make a running process pick up the new entry: restart DSH, or append a comment line to
+  `~/.dsh/profiles/<profile>/cordis.patch.yml` to force the composition to be re-resolved.
+- Client-only changes: run `node build.mjs`; `dsh-client-hmr` pushes `rebuilt` and the page swaps the module. Refresh when the
+  HMR channel is not connected.
 
 ---
 

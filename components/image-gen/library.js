@@ -9,7 +9,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-import { libraryFile } from './paths.js?v=37'
+import { cleanText, libraryFile } from './paths.js?v=44'
 
 const LIB_ENV = 'IMAGE_GEN_LIBRARY'
 
@@ -18,10 +18,6 @@ const SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792']
 const DEFAULT_SIZE = '1024x1024'
 const KINDS = ['prompt']
 const KEY_BY_KIND = { prompt: 'prompts' }
-
-function cleanText(value) {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
-}
 
 /** 库文件路径：`IMAGE_GEN_LIBRARY` 优先，默认数据目录 library.json。 */
 export function libraryPath() {

@@ -9,3 +9,9 @@ node_modules/
 
 # 插件运行时数据：生成图 / 收藏 / 模型配置（含密钥）/ 提示词库
 /data/
+
+# 热重载入口：仓库只提交当前那一个（其余留在本地，避免每改一次就多一个文件）。
+# 换入口时把下面这条例外改成新的 live-entry-N.js —— tools/check-client.mjs 会核对
+# 它和 cordis.patch.yml 指向的是同一个文件，忘了改会直接报错。
+live-entry-*.js
+!live-entry-66.js

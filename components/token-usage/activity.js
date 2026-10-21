@@ -1,5 +1,5 @@
 export const name = 'token-usage-activity'
-export const inject = ['sessions', 'sessionPersistence', 'sessionController', 'connection']
+export const inject = ['sessions', 'sessionPersistence', 'sessionController', 'connection', 'timer']
 
 function tokenCount(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : 0

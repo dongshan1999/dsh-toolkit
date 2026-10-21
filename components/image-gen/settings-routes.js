@@ -1,16 +1,37 @@
 /**
  * @local/image-gen — 生图模型接入设置路由。
  *
- *   GET  /api/image-gen/config       当前生效的 baseURL / model / Key 状态（永不回传密钥明文）
- *   POST /api/image-gen/config       写入 baseURL / model / API Key
- *   POST /api/image-gen/config/test  连通性自检：只打 /models，不触发生图扣费
+ *   GET  /api/image-gen/config        当前生效的默认模型 + 组/模型目录（永不回传密钥明文）
+ *   POST /api/image-gen/config        单一写入口，按 action 区分：
+ *       { action: 'addProvider',    name?, baseURL, apiKey?, models?: [{ model, name? }] }
+ *       { action: 'updateProvider', id, name?, baseURL?, apiKey? }
+ *       { action: 'removeProvider', id }
+ *       { action: 'addModels',      providerId, models: [{ model, name?, pricePerImage? }] }
+ *       { action: 'updateModel',    id, name?, model?, pricePerImage? }
+ *       { action: 'removeModel',    id }
+ *       { action: 'setDefault',     id }
+ *   POST /api/image-gen/config/test    连通性自检：只打 /models，不触发生图扣费（{ id } 指定模型或组）
+ *   POST /api/image-gen/config/models  拉取可用模型：{ id } 按组、{ baseURL, apiKey } 按临时参数；
+ *                                      返回 added = 该组已添加的上游模型 id（面板据此置灰）
  *
- * 写入目标见 ./config.js（本机配置文件 + 凭据库）。
+ * 写入目标与结构见 ./config.js。
  */
-import { addModel, configView, removeModel, resolveConfig, resolveModelById, saveApiKey, setDefaultModel } from './config.js?v=37'
+import {
+  addModels,
+  addProvider,
+  configView,
+  removeModel,
+  removeProvider,
+  resolveConfig,
+  resolveModelById,
+  resolveProviderById,
+  setDefaultModel,
+  updateModel,
+  updateProvider,
+} from './config.js?v=44'
 
 export const name = 'image-gen-settings'
-export const inject = ['settings', 'credentials', 'connection']
+export const inject = ['settings', 'credentials', 'connection', 'timer']
 
 const TEST_TIMEOUT_MS = 15000
 
@@ -122,6 +143,38 @@ export function apply(ctx) {
     }, `image-gen: ${path}`)
   }
 
+  // 写操作统一在这里：成功一律回传最新的完整目录视图，客户端拿一份全量渲染。
+  const WRITES = {
+    async addProvider(body) {
+      const result = await addProvider(ctx, body)
+      return { ok: result.ok, status: result.ok ? 200 : 400, id: result.id, message: result.message || result.error }
+    },
+    async updateProvider(body) {
+      const result = await updateProvider(ctx, body)
+      return { ok: result.ok, status: result.ok ? 200 : 400, id: result.id, message: result.message || result.error }
+    },
+    async removeProvider(body) {
+      const result = await removeProvider(body?.id)
+      return { ok: result.ok, status: result.ok ? 200 : 400, message: result.message || result.error }
+    },
+    async addModels(body) {
+      const result = await addModels(body?.providerId, body?.models)
+      return { ok: result.ok, status: result.ok ? 200 : 400, added: result.added, message: result.message || result.error }
+    },
+    async updateModel(body) {
+      const result = await updateModel(body)
+      return { ok: result.ok, status: result.ok ? 200 : 400, id: result.id, message: result.message || result.error }
+    },
+    async removeModel(body) {
+      const result = await removeModel(body?.id)
+      return { ok: result.ok, status: result.ok ? 200 : 400, message: result.message || result.error }
+    },
+    async setDefault(body) {
+      const result = await setDefaultModel(body?.id)
+      return { ok: result.ok, status: result.ok ? 200 : 400, id: result.id, message: result.ok ? '已切换默认模型' : result.error }
+    },
+  }
+
   registerRoute('/api/image-gen/config', ['GET', 'POST'], async (request) => {
     try {
       if (request.method === 'GET') {
@@ -129,29 +182,11 @@ export function apply(ctx) {
       }
       const body = await request.json().catch(() => ({}))
       const action = String(body?.action ?? '')
-      if (action === 'setDefault') {
-        const result = await setDefaultModel(String(body?.id ?? ''))
-        if (result.ok !== true) return json({ ok: false, message: result.error }, 400)
-        return json({ ok: true, message: '已切换默认模型', config: await configView(ctx) })
-      }
-      if (action === 'add') {
-        const result = await addModel(body)
-        if (result.ok !== true) return json({ ok: false, message: result.error }, 400)
-        // 随附密钥：存进该条目自己的 keyEnv（自定义组默认 CUSTOM_API_KEY），不串组。
-        let keyNote = ''
-        const attachedKey = textField(body, 'apiKey')
-        if (attachedKey !== undefined && attachedKey !== null && result.entry?.keyEnv) {
-          const stored = await saveApiKey(ctx, attachedKey, result.entry.keyEnv)
-          keyNote = stored === 'credentials' ? '，密钥已写入凭据库' : '，密钥已写入配置文件'
-        }
-        return json({ ok: true, id: result.id, message: '已加入模型目录' + keyNote, config: await configView(ctx) })
-      }
-      if (action === 'remove') {
-        const result = await removeModel(String(body?.id ?? ''))
-        if (result.ok !== true) return json({ ok: false, message: result.error }, 400)
-        return json({ ok: true, message: '已从目录移除', config: await configView(ctx) })
-      }
-      return json({ ok: false, message: `未知操作：${action || '（空）'}` }, 400)
+      const write = WRITES[action === 'remove' ? 'removeModel' : action]
+      if (write === undefined) return json({ ok: false, message: `未知操作：${action || '（空）'}` }, 400)
+      const result = await write(body)
+      if (result.ok !== true) return json({ ok: false, message: result.message }, result.status ?? 400)
+      return json({ ...result, config: await configView(ctx) })
     } catch (cause) {
       return json({ ok: false, message: String((cause && cause.message) || cause) }, 500)
     }
@@ -162,7 +197,7 @@ export function apply(ctx) {
       const body = await request.json().catch(() => ({}))
       let baseURL
       let apiKey
-      // 带 id：按目录条目测试（用该条自己的 baseURL 与 keyEnv 解析密钥）。
+      // 带 id：按目录条目测试（用该条所属组的 baseURL 与该组密钥）。
       if (typeof body?.id === 'string' && body.id.trim() !== '') {
         const one = await resolveModelById(ctx, body.id)
         if (one === null) return json({ ok: false, message: '目录里没有这个模型' }, 404)
@@ -174,7 +209,7 @@ export function apply(ctx) {
         apiKey = textField(body, 'apiKey') ?? resolved.apiKey
       }
       if (apiKey === null) {
-        return json({ ok: false, message: '这条模型还没有可用的 API Key：先在设置里为对应分组填入再测试。' }, 400)
+        return json({ ok: false, message: '这条模型所属的组还没有 API Key：先在设置里为对应组填入再测试。' }, 400)
       }
       return json(await testConnection(baseURL, apiKey))
     } catch (cause) {
@@ -182,21 +217,35 @@ export function apply(ctx) {
     }
   })
 
-  // 拉取 /models 模型列表：不触发生成，只读探测；把生图模型单列出来供设置页选择。
+  // 拉取 /models：{ id } 用该组的链接与密钥（获取 / 更新模型），{ baseURL, apiKey } 用表单里刚填的
+  // （组还没保存时）。added 回传该组已有的上游模型 id，面板把已添加的置灰。
   registerRoute('/api/image-gen/config/models', ['POST'], async (request) => {
     try {
       const body = await request.json().catch(() => ({}))
-      const resolved = await resolveConfig(ctx)
-      const baseURL = textField(body, 'baseURL') ?? resolved.baseURL
-      const apiKey = textField(body, 'apiKey') ?? resolved.apiKey
+      let baseURL
+      let apiKey
+      let added = []
+      const providerId = typeof body?.id === 'string' ? body.id.trim() : ''
+      if (providerId !== '') {
+        const provider = await resolveProviderById(ctx, providerId)
+        if (provider === null) return json({ ok: false, message: '没有这个模型组' }, 404)
+        // 表单里刚改过的链接 / Key 优先（改完链接不必先存盘就能拉列表），没填就回落该组已存的值。
+        baseURL = textField(body, 'baseURL') ?? provider.baseURL
+        apiKey = textField(body, 'apiKey') ?? provider.apiKey
+        added = provider.models
+      } else {
+        const resolved = await resolveConfig(ctx)
+        baseURL = textField(body, 'baseURL') ?? resolved.baseURL
+        apiKey = textField(body, 'apiKey') ?? resolved.apiKey
+      }
       if (apiKey === null) {
-        return json({ ok: false, message: '还没有 API Key：先在设置里填入 API Key，再加载模型列表。' }, 400)
+        return json({ ok: false, message: '这个组还没有 API Key：先填 Key（或先保存该组）再获取模型。' }, 400)
       }
       const test = await testConnection(baseURL, apiKey)
       if (test.ok !== true) {
         return json({ ok: false, status: test.status, message: test.message }, 400)
       }
-      return json({ ok: true, baseURL, models: test.models, all: test.count, message: test.message })
+      return json({ ok: true, baseURL, models: test.models, all: test.count, added, message: test.message })
     } catch (cause) {
       return json({ ok: false, message: String((cause && cause.message) || cause) }, 500)
     }

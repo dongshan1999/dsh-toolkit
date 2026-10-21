@@ -13,13 +13,13 @@
  * 面板「设置」Tab 写配置文件，工具与面板读到同一份真相。
  *
  * 图片 URL 约 24 小时过期，因此同时统一下载到 imageDir()（默认数据目录 images/，
- * 即 $DSH_HOME/dsh-toolkit/images，`IMAGE_GEN_DIR` 可覆盖）并返回本地路径；下载失败不影响返回 URL。
+ * 即 $DSH_HOME/dsh-toolkit/image-gen/images，`IMAGE_GEN_DIR` 可覆盖）并返回本地路径；下载失败不影响返回 URL。
  * 跟会话工作区无关，图片不落进项目目录。
  */
-import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=37'
+import { DEFAULT_KEY_ENV, DEFAULT_SIZE, SIZES, resolveConfig } from './config.js?v=44'
 // 共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例拿不到新导出；
 // 改了任何共享底层（config.js / generate.js / library.js）都要同步升这个 ?v。
-import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=37'
+import { MAX_COUNT, MAX_REFERENCES, MAX_REFERENCE_BYTES, generateMany, pickCount, pickSize, resolveReferenceImage } from './generate.js?v=44'
 
 export const name = 'image-gen'
 export const inject = ['tools', 'credentials']
@@ -41,7 +41,7 @@ export function apply(ctx) {
       + '提示词越详细越好（主体、风格、场景、构图、光线）。'
       + `size 为输出像素尺寸，常用 ${SIZES.join('、')}（默认 ${DEFAULT_SIZE}）。`
       + `count 可一次生成多张（1-${MAX_COUNT}）。返回图片 URL（约 24 小时有效）和已保存的本地文件路径。`
-      + '图片统一保存在数据目录 $DSH_HOME/dsh-toolkit/images/（环境变量 IMAGE_GEN_DIR 可覆盖），不写入当前项目。'
+      + '图片统一保存在数据目录 $DSH_HOME/dsh-toolkit/image-gen/images/（环境变量 IMAGE_GEN_DIR 可覆盖），不写入当前项目。'
       + '模型与接口地址在「图片生成」面板的设置里配置。',
     parameters: {
       type: 'object',
@@ -52,7 +52,7 @@ export function apply(ctx) {
         image: {
           type: 'array',
           items: { type: 'string' },
-          description: '可选：参考图片（图生图 / 编辑 / 多图合成）。每项为本地文件路径、https URL 或 data URL；传入后按 prompt 对参考图重绘或编辑。',
+          description: `可选：参考图片（图生图 / 编辑 / 多图合成）。每项为本地图片文件路径、https URL 或 data URL；传入后按 prompt 对参考图重绘或编辑。本地路径只接受 png/jpg/jpeg/webp/gif 且文件头确为图片、单张不超过 ${Math.round(MAX_REFERENCE_BYTES / 1024 / 1024)} MB；参考图会原样作为请求体的一部分发给已配置的第三方生图接口，不要传敏感文件。`,
         },
       },
       required: ['prompt'],

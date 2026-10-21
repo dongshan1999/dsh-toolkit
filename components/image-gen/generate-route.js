@@ -12,11 +12,11 @@
 import { readFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { resolveConfig } from './config.js?v=37'
-import { MAX_COUNT, MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage, scanImageDirs } from './generate.js?v=37'
+import { resolveConfig } from './config.js?v=44'
+import { MAX_REFERENCES, generateMany, pickCount, pickSize, resolveReferenceImage, scanImageDirs } from './generate.js?v=44'
 
 export const name = 'image-gen-generate'
-export const inject = ['settings', 'credentials', 'connection', 'sessions']
+export const inject = ['settings', 'credentials', 'connection', 'sessions', 'timer']
 
 const IMAGE_NAME = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i
 const MIME_BY_EXT = {
@@ -110,6 +110,9 @@ export function apply(ctx) {
                 model,
                 size,
                 count: results.length,
+                // 回传真正发给上游的那份提示词：面板把它标在生成结果图片旁边，
+                // 生成完再改表单也不会让旁注跟着串。
+                prompt,
                 files: results.map((item) => item.name).filter((name) => name !== null),
                 images: results.map((item) => ({
                   name: item.name,

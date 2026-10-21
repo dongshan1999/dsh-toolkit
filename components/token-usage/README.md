@@ -6,7 +6,9 @@
 
 - 面板默认「今天」，可切 `今天 / 7 天 / 30 天 / 90 天 / 全部`；15 秒轮询
 - 合并 live session、持久化 session 和 subagent session；持久化会话按 revision 增量缓存
-- 双 Y 轴趋势图、模型分布、会话明细、计价明细；侧边栏入口「Token 用量」（order 50）
+- 双 Y 轴趋势图、模型分布、会话明细、计价明细
+- **没有侧边栏入口**（用户要求隐藏；面板 key 仍是 `token-usage`，`ctx.layout.selectPanel('token-usage')` 可直达，
+  目前只注册 `main` 槽位，没有登记进 toolkit 的共享注册表——要在分页里露出，需要先补一次注册）
 
 ## 文件
 
@@ -26,10 +28,10 @@
   - `source: 'user'` — 面板里手工添加/修改的价目，**同步永不覆盖**；
   - `source: 'models-dev'` — models.dev 同步写入，下次同步刷新。
   - `deletedModelIds` 删除墓碑：删过的条目（含内置表里的）不会被同步复活。
-- **图片生成（image-gen）按张计费**：`$DSH_HOME/dsh-toolkit/config.json` 里配了
+- **图片生成（image-gen）按张计费**：`$DSH_HOME/dsh-toolkit/image-gen/config.json` 里配了
   `pricePerImage`（美元/张）的生图模型，会作为价目条目出现在计价明细
   （token 单价显示 `—`，按张单价标在显示名旁）；每次生成落一条记录到
-  `$DSH_HOME/dsh-toolkit/usage.jsonl`，scan 时合并为伪会话行「图片生成」，
+  `$DSH_HOME/dsh-toolkit/image-gen/usage.jsonl`，scan 时合并为伪会话行「图片生成」，
   成本 = 当前每张单价 × 张数（与 token 同哲学：当前价 × 历史用量）。
 - **合并优先级**：用户手工 > models.dev 同步 > 内置表；图片生成条目最后覆盖同名。
   文件损坏/缺失只降级内置并标错。
@@ -45,6 +47,9 @@
   `overrides`/`sync`/`used`；`POST` 同一路由 `{action: 'upsert'|'delete'|'sync'}`。
 - 请求侧模型名未命中（精确 → 别名 `MODEL_ALIASES` → 最长前缀）成本仍记 0，
   请求标「未配价」。
-- **数据目录与迁移**：上述文件默认都在 `$DSH_HOME/dsh-toolkit/` 下（`DSH_HOME` 未设时回退 `~/.dsh`，
-  本机即 `~/.dsh/dsh-toolkit/`），可用 `DSH_TOOLKIT_DATA` 整体换到别处；老位置的数据在新目录首次启动时
-  自动迁移一次，详见根 README「一次性迁移」。
+- **数据目录**：按组件分目录放在 `$DSH_HOME/dsh-toolkit/` 下（`DSH_HOME` 未设时回退 `~/.dsh`，
+  本机即 `~/.dsh/dsh-toolkit/`），可用 `DSH_TOOLKIT_DATA` 整体换到别处。本组件的价目文件在
+  `token-usage/pricing.json`；生图配置与计费记录属于 image-gen，在 `image-gen/config.json` 与
+  `image-gen/usage.jsonl`（本组件只读它们来做成本合并）。
+- **没有自动迁移**：插件不再自动搬老位置的数据，升级后按根 README「没有自动迁移」一节手工 `mv`；
+  工具集 →「设置」分页可以核对价目文件的实际落点。

@@ -11,10 +11,10 @@
  * 库文件路径与结构见 ./library.js。
  */
 // ?v=37：共享模块在 Host ESM 缓存里按 URL 区分，不带 query 会命中旧实例。
-import { libraryPath, readLibrary, remove, tagImages, upsert, writeLibrary } from './library.js?v=37'
+import { libraryPath, readLibrary, remove, tagImages, upsert, writeLibrary } from './library.js?v=44'
 
 export const name = 'image-gen-library'
-export const inject = ['connection']
+export const inject = ['connection', 'timer']
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

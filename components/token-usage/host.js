@@ -3,10 +3,10 @@ import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { entries as builtinPricingEntries, SOURCE_LABEL as BUILTIN_SOURCE_LABEL } from './pricing-defaults.mjs?v=15'
-import { configFile, pricingFile, usageFile } from '../image-gen/paths.js?v=37'
+import { configFile, pricingFile, usageFile } from '../image-gen/paths.js?v=44'
 
 export const name = 'token-usage'
-export const inject = ['fs', 'sessions', 'sessionPersistence', 'sessionController', 'connection', 'llm']
+export const inject = ['fs', 'sessions', 'sessionPersistence', 'sessionController', 'connection', 'llm', 'timer']
 
 // 插件自有价目文件：用户自定义/修改 + models.dev 同步结果都存这里（内置表仍打底）。
 // 默认收在插件统一数据目录（$DSH_HOME/dsh-toolkit/token-usage/pricing.json），与 image-gen

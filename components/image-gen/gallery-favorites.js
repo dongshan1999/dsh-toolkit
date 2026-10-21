@@ -1,10 +1,22 @@
-import { copyFile, mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises'
+/**
+ * @local/image-gen — 收藏库路由（收藏是**索引字段**，不是第二个目录）。
+ *
+ * 所有图片只有一份，统一躺在 images/ 里；`favorites.json` 只记 `{ 文件名: favoritedAt }`。
+ * 因此本文件的所有路由都读写同一批文件：
+ *   GET  /api/image-gen/favorites       列出被标记的图（按收藏时间倒序，分页）
+ *   GET  /api/image-gen/favorites/file  直接从 images/ 读字节（不再有 favorites/ 副本）
+ *   POST /api/image-gen/favorite        打标记（幂等）
+ *   POST /api/image-gen/unfavorite      删标记（不删图）
+ */
+import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
-import { favoritesDir, scanFavoriteDirs, scanImageDirs } from './generate.js?v=37'
+import { clearFavorite, favoriteMarks, markFavorite } from './favorites.js?v=44'
+import { scanImageDirs } from './generate.js?v=44'
+import { attachImagePrompts } from './prompts.js?v=44'
 
 export const name = 'image-gen-favorites'
-export const inject = ['connection', 'sessions']
+export const inject = ['connection', 'sessions', 'timer']
 
 const IMAGE_NAME = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i
 const MIME_BY_EXT = {
@@ -48,7 +60,7 @@ async function listDirImages(dirs) {
       } catch { /* skip */ }
     }
   }
-  return [...byName.values()].sort((a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name))
+  return [...byName.values()]
 }
 
 async function findFile(dirs, name) {
@@ -75,6 +87,11 @@ function pageParams(request) {
   const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0)
   const limit = Math.min(60, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '24', 10) || 24))
   return { offset, limit }
+}
+
+/** 收藏后的完整名列表（按收藏时间倒序），路由回包统一带上，前端用来亮星星。 */
+async function favoriteNameList(marks) {
+  return Object.keys(marks).sort((a, b) => marks[b] - marks[a] || a.localeCompare(b))
 }
 
 export function apply(ctx) {
@@ -111,14 +128,21 @@ export function apply(ctx) {
   registerRoute('/api/image-gen/favorites', ['GET'], async (request) => {
     try {
       const { offset, limit } = pageParams(request)
-      const all = await listDirImages(scanFavoriteDirs(ctx))
-      const files = all.slice(offset, offset + limit)
+      const marks = await favoriteMarks()
+      const names = await favoriteNameList(marks)
+      // 只保留文件还在的条目（外部删了文件时索引可能变陈旧）。
+      const present = new Map((await listDirImages(scanImageDirs(ctx))).map((item) => [item.name, item]))
+      const all = names
+        .filter((name) => present.has(name))
+        .map((name) => ({ ...present.get(name), favoritedAt: marks[name] }))
+      const files = await attachImagePrompts(all.slice(offset, offset + limit))
       return json({
         total: all.length,
         offset,
         limit,
         hasMore: offset + files.length < all.length,
-        names: all.map((item) => item.name),
+        names,
+        starred: names,
         files,
       })
     } catch (cause) {
@@ -130,7 +154,7 @@ export function apply(ctx) {
     try {
       const name = basename(String(parseUrl(request).searchParams.get('name') ?? ''))
       if (!IMAGE_NAME.test(name)) return json({ ok: false, message: '非法文件名' }, 400)
-      const full = await findFile(scanFavoriteDirs(ctx), name)
+      const full = await findFile(scanImageDirs(ctx), name)
       if (full === null) return json({ ok: false, message: '文件不存在' }, 404)
       const bytes = await readFile(full)
       const mime = MIME_BY_EXT[extname(name).toLowerCase()] ?? 'image/png'
@@ -147,11 +171,9 @@ export function apply(ctx) {
       if (!IMAGE_NAME.test(name)) return json({ ok: false, message: '非法文件名' }, 400)
       const source = await findFile(scanImageDirs(ctx), name)
       if (source === null) return json({ ok: false, message: '原图不存在' }, 404)
-      const destDir = favoritesDir()
-      await mkdir(destDir, { recursive: true })
-      await copyFile(source, join(destDir, name))
-      const all = await listDirImages(scanFavoriteDirs(ctx))
-      return json({ ok: true, name, names: all.map((item) => item.name), total: all.length })
+      // 只写索引标记：不复制、不移动文件。
+      const result = await markFavorite(name)
+      return json({ ok: true, name, names: result.names, total: result.names.length })
     } catch (cause) {
       return json({ ok: false, message: String(cause?.message || cause) }, 500)
     }
@@ -162,17 +184,11 @@ export function apply(ctx) {
       const body = await request.json().catch(() => ({}))
       const name = basename(String(body?.name ?? ''))
       if (!IMAGE_NAME.test(name)) return json({ ok: false, message: '非法文件名' }, 400)
-      const dirs = scanFavoriteDirs(ctx)
-      let deleted = 0
-      for (const dir of dirs) {
-        try {
-          await unlink(join(dir, name))
-          deleted += 1
-        } catch { /* next */ }
-      }
-      if (deleted === 0) return json({ ok: false, message: '收藏中没有这张图' }, 404)
-      const all = await listDirImages(dirs)
-      return json({ ok: true, name, names: all.map((item) => item.name), total: all.length })
+      const removed = await clearFavorite(name)
+      if (!removed) return json({ ok: false, message: '收藏中没有这张图' }, 404)
+      const marks = await favoriteMarks()
+      const names = await favoriteNameList(marks)
+      return json({ ok: true, name, names, total: names.length })
     } catch (cause) {
       return json({ ok: false, message: String(cause?.message || cause) }, 500)
     }
