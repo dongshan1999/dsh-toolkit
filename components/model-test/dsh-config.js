@@ -210,10 +210,13 @@ export function proposeFields(input) {
   const api = typeof input?.api === 'string' ? input.api : ''
   const fields = {}
 
-  const contextWindow = positiveInt(preset?.contextWindow) ?? positiveInt(live?.contextWindow)
+  // 能力值以**适配器（DSH 官方 catalog）声明**为准，预设只是兜底：
+  // resolveModelInfo 给的是这条链路真正会用的上下文/输出上限，models.dev 之类镜像
+  // 数据常与官方口径不一致（例如 deepseek 输出 393216 vs 官方 384000）。
+  const contextWindow = positiveInt(live?.contextWindow) ?? positiveInt(preset?.contextWindow)
   if (contextWindow !== null) fields.contextWindow = contextWindow
 
-  const maxTokens = positiveInt(preset?.maxTokens) ?? positiveInt(live?.defaultMaxTokens)
+  const maxTokens = positiveInt(live?.defaultMaxTokens) ?? positiveInt(preset?.maxTokens)
   if (maxTokens !== null) fields.maxTokens = maxTokens
 
   const modalities = Array.isArray(live?.inputModalities)
@@ -224,14 +227,20 @@ export function proposeFields(input) {
   // 先用按模型名匹配的预设检查手写档位；没有预设时才退回适配器目录能力。
   const liveLevels = Array.isArray(live?.efforts) ? live.efforts : []
   const presetLevels = isPlainObject(preset?.reasoning) && Array.isArray(preset.reasoning.levels) ? preset.reasoning.levels : []
-  const levels = presetLevels.length > 0 ? presetLevels : liveLevels
+  // 同上：适配器实报的档位优先，预设档位只在拿不到能力时兜底。
+  const levels = liveLevels.length > 0 ? liveLevels : presetLevels
   const usable = levels.filter((level) => typeof level === 'string' && level !== '' && level !== 'off')
   const wire = isPlainObject(preset?.reasoning) && isPlainObject(preset.reasoning.wire) ? preset.reasoning.wire : {}
   if (usable.length === 0) {
     fields.reasoningEfforts = false
   } else {
     const map = {}
-    // 只建议「思考档位」本身：off 不进 diff（维持原有语义，避免把关闭开关塞进配置）。
+    // 模型支持「关闭思考」时（预设的档位里带 off）顺手把 off 也建议上：
+    // 网关有明确的关闭写法就用它（如 mimo 的 disabled），没有就留 null
+    // （pi-ai 允许 off 的 wire 为空，表示选「关闭」时不发思考参数）。
+    if (levels.includes('off')) {
+      map.off = typeof wire.off === 'string' && wire.off !== '' ? wire.off : null
+    }
     for (const level of usable) {
       const spelling = typeof wire[level] === 'string' && wire[level] !== '' ? wire[level] : level
       map[level] = spelling
@@ -270,6 +279,28 @@ export function diffFields(entry, proposed) {
     if (field === 'reasoningEfforts') {
       before = withoutOffLevel(before)
       after = withoutOffLevel(after)
+      // 档位「名字集合」一致就算一致：wire 值（enabled/disabled 还是同名）是网关方言，
+      // 内置表与 models.dev 对同一模型给的写法本来就可能不同（mimo 要 enabled/disabled，
+      // models.dev 只写 low），比 wire 只会产出一条「low → low 却显示不同」的假差异。
+      if (isPlainObject(before) && isPlainObject(after)
+        && Object.keys(before).sort().join(',') === Object.keys(after).sort().join(',')) {
+        // 唯一值得提的差别：建议里有 off（该模型能关思考）而现有配置没写。
+        // 这不是配错，而是可以顺手补上的开关，所以单独标 onlyOff，UI 换一句文案。
+        const hadOff = isPlainObject(existing[field]) && existing[field].off !== undefined
+        const wantsOff = isPlainObject(proposed[field]) && proposed[field].off !== undefined
+        if (!hadOff && wantsOff) {
+          diff.push({
+            field,
+            label: FIELD_LABEL[field] ?? field,
+            before: existing[field],
+            after: proposed[field],
+            missing: false,
+            changed: true,
+            onlyOff: true,
+          })
+        }
+        continue
+      }
     }
     // compat 是「开关集合」，而且里面常常混着用户手写的开关（chatTemplateKwargs 之类，
     // 甚至有些是适配器从 catalog 合并进来的）。所以：

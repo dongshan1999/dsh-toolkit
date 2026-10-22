@@ -338,8 +338,10 @@ return {
         const locked = preset !== null && preset.supportsTemperature === false
         const helpParts = []
         if (preset !== null) {
-          if (preset.contextWindow) helpParts.push('上下文 ' + preset.contextWindow)
-          if (preset.maxTokens) helpParts.push('输出上限 ' + preset.maxTokens)
+          // 这两个数来自 models.dev 预设，只是「留空时大概会发什么」的参考；
+          // 真正会生效、也是「覆盖差异」写入的值，是下面 DSH 卡片里适配器声明的能力。
+          if (preset.contextWindow) helpParts.push('预设上下文 ' + preset.contextWindow)
+          if (preset.maxTokens) helpParts.push('预设输出上限 ' + preset.maxTokens)
           if (locked) helpParts.push('该模型不接受 temperature')
           if (preset.reasoning !== null && preset.reasoning.mode !== 'none') helpParts.push('思考模式：' + preset.reasoning.mode)
         }
@@ -449,13 +451,15 @@ return {
         const rows = Array.isArray(data.diff) ? data.diff : []
         const node = (row) => {
           const same = row.changed !== true
-          const tag = row.missing === true ? '缺' : same ? '一致' : '不同'
+          const onlyOff = row.onlyOff === true
+          // 「可补 off」不是配错：模型能关思考，但配置里没写这个开关，补不补随你。
+          const tag = onlyOff ? '可补 off' : row.missing === true ? '缺' : same ? '一致' : '不同'
           return React.createElement('div', { className: 'mt-dsh-row', key: row.field },
             React.createElement('span', { className: 'mt-dsh-field' }, row.label),
-            React.createElement('span', { className: 'mt-dsh-val' + (same ? ' mt-dsh-val-same' : ''), title: row.field },
-              same
-                ? row.afterText
-                : row.beforeText + '  →  ' + row.afterText),
+            React.createElement('span', {
+              className: 'mt-dsh-val' + (same ? ' mt-dsh-val-same' : ''),
+              title: onlyOff ? '这个模型支持关闭思考，但 DSH 配置里没写 off 档位；点「覆盖差异」会把 off 一起补上' : row.field,
+            }, same ? row.afterText : row.beforeText + '  →  ' + row.afterText),
             React.createElement('span', {
               className: 'mt-dsh-tag' + (row.missing === true ? ' mt-dsh-tag-miss' : same ? ' mt-dsh-tag-same' : ' mt-dsh-tag-warn'),
             }, tag))
@@ -524,8 +528,6 @@ return {
         const isCollapsed = !expanded.includes(group.id)
         const groupKeys = group.models.map((item) => keyOf(group.id, item.id))
         const groupOverride = overrideOf(overrides, group.id, null)
-        const groupKey = group.id + '\u0000*'
-        const editingGroup = editing === groupKey
         const onHeadClick = (event) => {
           const el = event.target
           // 组头里的按钮/输入框各有动作，只有点空白、组名、计数这类区域才算「收起/展开」。
@@ -547,12 +549,6 @@ return {
               : null,
             React.createElement('button', {
               className: 'mt-btn',
-              disabled: running,
-              title: '给这一组设置默认参数（单模型配置会覆盖它）',
-              onClick: () => openEditor(group.id, null),
-            }, editingGroup ? '收起' : '整组参数'),
-            React.createElement('button', {
-              className: 'mt-btn',
               disabled: running || group.models.length === 0,
               title: '测试这一组的全部模型（会先展开这一组，方便看结果）',
               onClick: () => {
@@ -560,7 +556,6 @@ return {
                 run({ provider: group.id }, groupKeys)
               },
             }, '测试本组')),
-          editingGroup ? React.createElement('div', { className: 'mt-models' }, paramsEditor(group.id, null)) : null,
           isCollapsed ? null : React.createElement('div', { className: 'mt-models' },
             group.models.length === 0
               ? React.createElement('div', { className: 'mt-empty' }, '该组没有可用模型')

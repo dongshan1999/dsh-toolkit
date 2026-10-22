@@ -1,8 +1,7 @@
 # 功能案：Token 用量与成本（components/token-usage）
 
 > 状态：已实现
-> 关联组件：`components/token-usage/`（host.js + client.js + README.md）
-> 同步维护：本文与 `components/token-usage/README.md` 保持一致，改动时请同时更新。
+> 关联组件：`components/token-usage/`（host.js + client.js）
 > 面板位置：独立面板「Token 用量」（order 50），**不在「工具集」分页里**，也没有侧边栏入口（用户要求隐藏）；面板 key 仍是 `token-usage`，`ctx.layout.selectPanel('token-usage')` 可直达。
 
 ## 1. 要解决的问题
@@ -132,6 +131,8 @@ type ModelBucket = {
 ```
 
 - 单价单位：**每百万 Token 的美元价**；非法/负值归 0（与成本计算口径一致）。
+- **合并优先级**：用户手工（`source: 'user'`）> models.dev 同步（`source: 'models-dev'`）> 内置表；
+  图片生成的按张条目最后覆盖同名条目。
 - 文件缺失、结构不对、读取失败都只降级到内置表，并把错误串带给面板。
 - 写文件用临时文件 + rename 的原子写。
 
@@ -154,8 +155,7 @@ type ModelBucket = {
 ### 4.5 内置价目 `pricing-defaults.mjs`
 
 - 内置价目表（每百万 Token，美元，**79 个模型快照**），随插件分发，永远可用。
-- 手工调价直接改本文件；改完记得同步升 `host.js` 导入行的 `?v=` 与 live-entry 的版本
-  （见根 README 的两条铁律）。
+- 手工调价直接改本文件；改完记得同步升 `host.js` 导入行的 `?v=` 与 live-entry 的版本。
 
 ### 4.6 生图按张计费（与 image-gen 的契约）
 
@@ -177,17 +177,17 @@ type ModelBucket = {
 | 活跃度 | 15 秒 + `assistant/message` 事件失效 | 事件驱动 |
 | 面板轮询 | 主表格 15 秒、计价明细 60 秒 | 手动「刷新」 |
 
-### 4.8 文件分工（README 表格原样保留）
+### 4.8 文件分工（原组件说明表格原样保留）
 
 | 文件 | 作用 |
 | --- | --- |
 | `host.js` | 统计与缓存 + 经 `ctx.connection.fetch.register` 注册路由（`GET/POST /api/token-usage`、`/summary`、`/pricing`；会话事件触发缓存失效） |
 | `client.js` | 浏览器面板源码。**不直接部署**：由根目录 `node build.mjs` 包装进统一入口 `client.js` |
-| `pricing-defaults.mjs` | 内置价目表（每百万 Token，美元，79 个模型快照）。手工调价直接改本文件；改完记得同步升 `host.js` 导入行的 `?v=` 与 live-entry 的版本（见根 README 的两条铁律） |
+| `pricing-defaults.mjs` | 内置价目表（每百万 Token，美元，79 个模型快照）。手工调价直接改本文件；改完记得同步升 `host.js` 导入行的 `?v=` 与 live-entry 的版本 |
 
 ### 4.9 没有自动迁移
 
-插件不再自动搬老位置的数据，升级后按根 README「没有自动迁移」一节手工 `mv`；
+插件不再自动搬老位置的数据，升级后手工 `mv` 到 §4.4 的对应位置；
 工具集 →「设置」分页可以核对价目文件的实际落点。
 
 ## 5. 接口契约
@@ -356,17 +356,17 @@ image、tts 等非文本模型；id 归一化（剥 `provider/` 前缀、`:变�
 ## 9. 已知限制
 
 - **没有侧边栏入口。** 面板只能通过 `selectPanel('token-usage')` 或直接路由打开。
-  README 还写着「也注册在 toolkit 的共享注册表里，将来要在分页里露出只需去掉跳过条件」；
+  旧版组件说明还写着「也注册在 toolkit 的共享注册表里，将来要在分页里露出只需去掉跳过条件」；
   按当前 `components/token-usage/client.js` 核对，它只登记 `main` 槽位、没有调用共享注册表的
   `register`，因此**现在没有可去掉的跳过条件**——要在「工具集」分页里露出需要补一次注册。
 - **统计口径限于 `assistant/message` 的 `usage`。** 工具调用、外部 API 消耗、缓存之外的本地算力都不计。
 - **未配价即成本 0。** 请求侧模型名未命中价目（精确 → 别名 → 最长前缀）时成本记 0，并标「未配价」。
 - **内置价目是快照。** `pricing-defaults.mjs` 的 79 个模型价格会过时；需要同步 models.dev 或手改内置表
-  （改完按根 README 的两条铁律升 `?v=` 与 live-entry 版本）。
+  （改完升 `?v=` 与 live-entry 版本）。
 - **models.dev 匹配保守。** 只取精确 id 与日期快照后缀（如 `-20250514` / `-latest`），
   家族变体（`glm-x-flash-eu`、`grok-4.7` 这类）不会被前缀扩散带进来，因此可能少配到价。
 - **同步依赖外网。** 15 秒超时；失败只写 `modelsDevSync.lastSyncError`，不改动已有价目。
 - **汇率只是显示层。** 默认 7.2，手动改后只影响换算显示；历史成本不会因汇率变化而重算成另一套美元数。
 - **图片生成行的 token 字段为 0。** 它只参与请求数/成本统计，不参与 token 总量与缓存命中率。
 - **面板持续轮询。** 主表格 15 秒、计价明细 60 秒一次，长时间开着会产生周期性请求。
-- **没有自动迁移。** 老位置的价目/配置需要按根 README 手工 `mv`；工具集 →「设置」可核对落点。
+- **没有自动迁移。** 老位置的价目/配置需要手工 `mv` 到 §4.4 的对应位置；工具集 →「设置」可核对落点。

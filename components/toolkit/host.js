@@ -32,6 +32,7 @@ import {
   usageFile,
 } from '../image-gen/paths.js?v=44'
 import { paramsFile, presetsFile } from '../model-test/presets.js?v=12'
+import { clipboardDir, configFile as clipConfigFile, indexPath as clipIndexFile } from '../clipboard/paths.js?v=3'
 import { configFile as notifyConfigFile, queueFile as notifyQueueFile } from '../notifications/host.js?v=10'
 
 export const name = 'toolkit'
@@ -107,6 +108,12 @@ function storageOverview() {
       label: '通知',
       dir: notificationsDir(),
       files: [entry('通知配置', notifyConfigFile()), entry('通知队列', notifyQueueFile())],
+    },
+    {
+      id: 'clipboard',
+      label: '剪贴板',
+      dir: clipboardDir(),
+      files: [entry('条目索引', clipIndexFile()), entry('配置', clipConfigFile())],
     },
     {
       id: 'mcp',

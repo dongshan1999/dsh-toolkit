@@ -176,8 +176,17 @@ let captured = null
 const NATIVE_FETCH = globalThis.fetch
 globalThis.window = { __ModuleLoader__: { load(m) { captured = m } } }
 globalThis.fetch = () => new Promise(() => {})   // 不触网
+const DOM_LISTENERS = new Map()
 globalThis.document = {
   createElement: () => ({ textContent: '', remove() {} }),
+  addEventListener(type, handler) {
+    const list = DOM_LISTENERS.get(type) || []
+    list.push(handler)
+    DOM_LISTENERS.set(type, list)
+  },
+  removeEventListener(type, handler) {
+    DOM_LISTENERS.set(type, (DOM_LISTENERS.get(type) || []).filter((entry) => entry !== handler))
+  },
   head: { appendChild() {} },
   // createPortal 的目标容器；缺了它会退化成原地渲染（也能过，但那样就没测到 portal 分支）。
   body: { appendChild() {} },
@@ -831,6 +840,8 @@ if (mtPanel !== undefined) {
       '顶部有可用的「测试全部」')
     const groupButtons = expanded.filter((node) => node.type === 'button' && textOf(node) === '测试本组')
     check(groupButtons.length === 2, `每个组一个「测试本组」（当前 ${groupButtons.length} 个）`)
+    check(expanded.filter((node) => node.type === 'button' && textOf(node) === '整组参数').length === 0,
+      '组头不再有「整组参数」按钮')
     const perModel = expanded.filter((node) => node.type === 'button' && textOf(node) === '测试')
     check(perModel.length === 3, `展开后每个模型各一个「测试」（当前 ${perModel.length} 个）`)
 
@@ -1346,7 +1357,7 @@ if (nfPanel !== undefined) {
   if (tkShellPanel !== undefined && tkShellGlyph !== undefined) {
     const tkCases = [
       ['分页栏与默认分页', () => elOf(tkShellPanel.component),
-        ['图片生成', '模型测试', '通知', 'MCP', 'Skill', '设置', '左栏收纳']],
+        ['图片生成', '剪贴板', '模型测试', '通知', 'MCP', 'Skill', '设置', '左栏收纳']],
       ['侧边栏主图标', () => elOf(tkShellGlyph.component, { size: 18 }), ['T']],
     ]
     runGroup('toolkit', ['ToolkitPanel', 'Panel'], tkCases)
@@ -2359,20 +2370,22 @@ try {
       check(/revision/.test(String(conflict.body.message)), '冲突文案提示重新读取')
     }
     check(dshRead.body.revision === 5, `GET /dsh 带出 settings revision（CAS 版本号，当前 ${dshRead.body.revision}）`)
-    check(dshRead.body.proposed?.contextWindow === 1050000 && dshRead.body.proposed?.maxTokens === 128000,
-      `GET /dsh 用预设表给出建议字段（ctx=${dshRead.body.proposed?.contextWindow}, max=${dshRead.body.proposed?.maxTokens}）`)
+    // 能力值以适配器（官方 catalog）为准：这里的假适配器报的是 400000 / 8192，
+    // 预设表给的是 1050000 / 128000 —— 必须用前者，preset 只兜底。
+    check(dshRead.body.proposed?.contextWindow === 400000 && dshRead.body.proposed?.maxTokens === 8192,
+      `GET /dsh 的建议以适配器能力为准（ctx=${dshRead.body.proposed?.contextWindow}, max=${dshRead.body.proposed?.maxTokens}）`)
     check(dshRead.body.proposed?.temperature === undefined,
       'GET /dsh 的建议字段里没有 temperature（它不属于模型级配置）')
     check(Array.isArray(dshRead.body.diff) && dshRead.body.diff.length > 0,
       `GET /dsh 逐字段给出差异（${dshRead.body.diff?.length} 个字段）`)
     const dshFields = dshRead.body.diff.map((row) => row.field).join(',')
     check(!dshFields.includes('temperature'), `DSH 配置比对不涉及 temperature（字段：${dshFields}）`)
-    // 档位建议以预设为准：手写只配了 low/medium/high，而预设族给全 6 档，
-    // 所以这里必须标成「不同」——这正是修掉「幽灵档永远不出 diff」的那个改动。
+    // 档位建议也以适配器能力为准：适配器只报 low/medium/high（配置里正是这三档 → 一致、不出差异行），
+    // 而预设族给的是六档含 xhigh/max —— 绝不能让它们出现在建议里。
     const effortRow0 = dshRead.body.diff.find((row) => row.field === 'reasoningEfforts')
-    check(effortRow0 !== undefined && effortRow0.changed === true && /xhigh/.test(String(effortRow0.afterText)),
-      `档位建议以预设为准（${String(effortRow0?.afterText)}）`)
-    check(dshRead.body.diff.some((row) => row.field === 'contextWindow' && row.changed === false),
+    check(effortRow0 === undefined && !/xhigh|"max"/.test(JSON.stringify(dshRead.body.proposed.reasoningEfforts)),
+      `档位建议以适配器能力为准（${JSON.stringify(dshRead.body.proposed.reasoningEfforts)}）`)
+    check(dshRead.body.diff.some((row) => row.field === 'maxTokens' && row.changed === false),
       'GET /dsh 已配且一致的字段标成「一致」')
     check(dshRead.body.diff.some((row) => row.field === 'input' && row.missing === true),
       'GET /dsh 未配的字段标成「缺」')
@@ -2388,7 +2401,8 @@ try {
     const dshFill = await mtCall('/api/model-test/dsh', { provider: 'dl', model: 'gpt-6-sol', mode: 'fill' }, 'POST')
     check(dshFill.status === 200 && dshFill.body.ok === true && dshFill.body.applied.length > 0,
       `POST /dsh fill 写入缺失字段（${dshFill.body.applied?.join('、')}）`)
-    check(dshFill.body.applied.includes('input') && !dshFill.body.applied.includes('reasoningEfforts'),
+    check(dshFill.body.applied.includes('input') && !dshFill.body.applied.includes('reasoningEfforts')
+      && !dshFill.body.applied.includes('maxTokens'),
       `fill 只补缺的字段，已配且一致的不重写（${dshFill.body.applied?.join('、')}）`)
     check(dshWrites.length === 1 && dshWrites[0].ns === 'llm-pi-ai',
       'POST /dsh 通过 settings.mutate 写入（ns 取自 describe）')
@@ -2409,8 +2423,8 @@ try {
     const dshReplace = await mtCall('/api/model-test/dsh', { provider: 'dl', model: 'gpt-6-sol', mode: 'replace' }, 'POST')
     check(dshReplace.status === 200 && dshReplace.body.ok === true,
       'POST /dsh replace 接受覆盖模式')
-    check(dshConfig.providers.dl.models[0].maxTokens === 128000,
-      `replace 用预设建议覆盖差异字段（maxTokens → ${dshConfig.providers.dl.models[0].maxTokens}）`)
+    check(dshConfig.providers.dl.models[0].contextWindow === 400000,
+      `replace 用适配器建议覆盖差异字段（contextWindow → ${dshConfig.providers.dl.models[0].contextWindow}）`)
 
     // ⑰b compat 只在 anthropic-messages 上可写，而且要逐键补、不能整块替换。
     const dshClaude = await mtCall('/api/model-test/dsh?provider=claude&model=claude-opus-5')
@@ -2478,11 +2492,54 @@ try {
     const offRow = dshConfigModule.diffFields(
       { reasoningEfforts: { off: 'none', low: 'low' } }, { reasoningEfforts: { low: 'low' } })
       .find((row) => row.field === 'reasoningEfforts')
-    check(offRow !== undefined && offRow.changed === false, '配置里多一个 off 档位不算差异')
+    check(offRow === undefined, '配置里多一个 off 档位不产生差异行')
     const realDiff = dshConfigModule.diffFields(
       { reasoningEfforts: { off: 'none', low: 'low' } }, { reasoningEfforts: { low: 'low', high: 'high' } })
       .find((row) => row.field === 'reasoningEfforts')
     check(realDiff !== undefined && realDiff.changed === true, '档位真的不同（多了 high）仍然报差异')
+
+    // wire 方言（enabled/disabled 还是同名）不报差异：档位名集合一样就算一致。
+    const wireOnly = dshConfigModule.diffFields(
+      { reasoningEfforts: { off: 'disabled', low: 'enabled' } },
+      { reasoningEfforts: { off: null, low: 'low' } })
+    check(wireOnly.length === 0, '档位名相同、wire 写法不同（enabled vs low）不算差异')
+
+    // 支持关思考的模型：建议里带 off；配置缺 off 时给一条「可补 off」，而不是当成配错。
+    const offProposal = dshConfigModule.proposeFields({
+      preset: { reasoning: { mode: 'toggle', levels: ['off', 'low'], wire: { off: 'disabled', low: 'enabled' } } },
+    })
+    check(offProposal.reasoningEfforts.off === 'disabled', '支持关闭思考的模型，建议里带 off（用网关写法）')
+    const nullOffProposal = dshConfigModule.proposeFields({
+      preset: { reasoning: { mode: 'effort', levels: ['off', 'low', 'high'], wire: {} } },
+    })
+    check(nullOffProposal.reasoningEfforts.off === null, '网关没给 off 写法时建议 off: null（DSH 允许 off 不发参数）')
+    const nonReasoning = dshConfigModule.proposeFields({ preset: { reasoning: { mode: 'none', levels: [], wire: {} } } })
+    check(nonReasoning.reasoningEfforts === false, '非推理模型仍然建议 reasoningEfforts: false')
+    const onlyOffRow = dshConfigModule.diffFields(
+      { reasoningEfforts: { low: 'low', high: 'high' } }, nullOffProposal)
+      .find((row) => row.field === 'reasoningEfforts')
+    check(onlyOffRow !== undefined && onlyOffRow.changed === true && onlyOffRow.onlyOff === true,
+      '配置缺 off 时标成「可补 off」，不当成配错')
+    const alreadyOff = dshConfigModule.diffFields(
+      { reasoningEfforts: { off: 'disabled', low: 'enabled' } }, offProposal)
+    check(alreadyOff.length === 0, '配置已经写了 off 就不再提示')
+
+    // 能力值以适配器（DSH 官方 catalog）为准，models.dev 预设只兜底：
+    // 适配器说有 200 万上下文、6.4 万输出、只支持 low 一档时，不能被预设的 100 万/131072/多档覆盖。
+    const liveWins = dshConfigModule.proposeFields({
+      preset: { contextWindow: 1000000, maxTokens: 131072, reasoning: { mode: 'effort', levels: ['off', 'low', 'high'], wire: {} } },
+      live: { contextWindow: 2000000, defaultMaxTokens: 64000, efforts: ['low'], inputModalities: ['text'] },
+    })
+    check(liveWins.contextWindow === 2000000, '上下文窗口以适配器能力为准，预设只兜底')
+    check(liveWins.maxTokens === 64000, '输出上限以适配器能力为准，预设只兜底')
+    check(JSON.stringify(liveWins.reasoningEfforts) === JSON.stringify({ low: 'low' }),
+      '思考档位以适配器能力为准（适配器只报 low 就不建议 off/high）')
+    const presetFallback = dshConfigModule.proposeFields({
+      preset: { contextWindow: 1000000, maxTokens: 131072, reasoning: { mode: 'effort', levels: ['low'], wire: {} } },
+      live: { efforts: [], inputModalities: [] },
+    })
+    check(presetFallback.contextWindow === 1000000 && presetFallback.maxTokens === 131072,
+      '适配器拿不到能力时才退回预设建议')
   }
 } catch (e) {
   fail('model-test host 冒烟异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
@@ -3354,8 +3411,13 @@ try {
     check(res.status === 200 && body.ok === true, '设置接口返回 200 {ok:true}')
     check(body.dataDir === SET_DATA && body.version === '0.2.0', `返回数据根目录与插件版本（v${body.version}）`)
     check(JSON.stringify(body.components.map((c) => c.id)) === JSON.stringify([
-      'image-gen', 'token-usage', 'model-test', 'notifications', 'mcp', 'skill',
-    ]), '组件清单固定为 6 块（image-gen / token-usage / model-test / notifications / mcp / skill）')
+      'image-gen', 'token-usage', 'model-test', 'notifications', 'clipboard', 'mcp', 'skill',
+    ]), '组件清单固定为 7 块（image-gen / token-usage / model-test / notifications / clipboard / mcp / skill）')
+    const clipboard = body.components.find((c) => c.id === 'clipboard')
+    check(clipboard !== undefined && clipboard.files.length === 2
+      && clipboard.files.some((f) => f.path.endsWith(path.join('clipboard', 'index.json')))
+      && clipboard.files.some((f) => f.path.endsWith(path.join('clipboard', 'config.json'))),
+      'clipboard 块列出索引与配置两个落点')
     const imageGen = body.components[0]
     check(imageGen.files.length === 6
       && imageGen.files.some((f) => f.path.endsWith(path.join('image-gen', 'favorites.json')))
@@ -3381,6 +3443,264 @@ try {
     await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
   }
 }
+
+
+// ── 4.5 剪贴板 Host：落盘、去重、扩展名、截断、路径穿越 ──
+try {
+  const CB_DATA = path.join(TMP_ROOT, 'clipboard-data')
+  await fs.rm(CB_DATA, { recursive: true, force: true })
+  await fs.mkdir(CB_DATA, { recursive: true })
+  clearDataEnv()
+  setEnv('CLIPBOARD_DIR', CB_DATA)
+
+  const cbHost = await import(pathToFileURL(path.join(ROOT, 'components', 'clipboard', 'host.js')).href)
+  check(Array.isArray(cbHost.inject) && cbHost.inject.includes('connection') && cbHost.inject.includes('timer'),
+    'clipboard host 声明 inject 含 connection + timer')
+  const cb = makeHostCtx()
+  cbHost.apply(cb.ctx)
+
+  const cbPaths = ['/api/clipboard/paste', '/api/clipboard/list', '/api/clipboard/file', '/api/clipboard/delete', '/api/clipboard/config', '/api/clipboard/cleanup']
+  check(cbPaths.every((p) => cb.routes.has(p)), '剪贴板注册 6 个路由（paste / list / file / delete / config / cleanup）')
+  const cbCall = async (p, body, method) => {
+    const route = cb.routes.get(p.split('?')[0])
+    const init = { method: method || (body === undefined ? 'GET' : 'POST') }
+    if (body !== undefined) init.body = JSON.stringify(body)
+    const res = await route.fetch(new Request('http://127.0.0.1:3080' + p, init))
+    return { status: res.status, body: await res.json() }
+  }
+
+  const sample = 'line1\nline2\nline3\n'
+  const first = await cbCall('/api/clipboard/paste', { text: sample, mime: 'text/plain' })
+  check(first.status === 200 && first.body.ok === true && /^\d{6}-[0-9a-f]{8}\.txt$/.test(first.body.name),
+    'paste 返回 <HHmmss>-<sha1 前 8 位>.txt 形式的文件名')
+  check(first.body.lines === 3 && first.body.bytes === Buffer.byteLength(sample),
+    'paste 回报行数与字节数（末尾换行不多算一行）')
+  check(first.body.mime === 'text/plain' && first.body.reused === false && first.body.truncated === undefined,
+    '首次粘贴 reused=false，响应里没有 truncated 字段（不做截断）')
+  check(first.body.path.startsWith(path.join(CB_DATA, first.body.dir)) && (await fs.readFile(first.body.path, 'utf8')) === sample,
+    '文件落在 <根>/<日期>/ 下，内容与原文逐字节一致')
+
+  const modeOf = async (p) => { try { return (await fs.stat(p)).mode & 0o777 } catch { return -1 } }
+  check(await modeOf(first.body.path) === 0o600, '粘贴文件权限 0600')
+  check(await modeOf(path.join(CB_DATA, first.body.dir)) === 0o700, '日期目录权限 0700')
+  check(await modeOf(path.join(CB_DATA, 'index.json')) === 0o600, '索引文件权限 0600')
+
+  const again = await cbCall('/api/clipboard/paste', { text: sample, mime: 'text/plain' })
+  check(again.body.reused === true && again.body.hits === 2, '同一天同内容再粘一次 → 复用文件并 hits+1')
+  const dayDir = await fs.readdir(path.join(CB_DATA, first.body.dir))
+  check(dayDir.filter((n) => n.endsWith('.txt')).length === 1, '去重后日期目录里只有一个 .txt（没有第二份副本）')
+
+  const html = await cbCall('/api/clipboard/paste', { text: '<b>x</b>', mime: 'text/html' })
+  check(html.body.name.endsWith('.html'), '剪贴板只带 text/html → 存成 .html')
+  const csv = await cbCall('/api/clipboard/paste', { text: 'a,b\n1,2', mime: 'text/csv' })
+  check(csv.body.name.endsWith('.csv'), '剪贴板只带 text/csv → 存成 .csv')
+
+  const list = await cbCall('/api/clipboard/list?limit=10', undefined, 'GET')
+  check(list.body.ok === true && list.body.total === 3 && list.body.items.length === 3,
+    'list 返回 3 条（txt + html + csv），最新在前')
+  check(list.body.items[0].name === csv.body.name && typeof list.body.totalBytes === 'number',
+    'list 按时间倒序，并给总字节')
+
+  const head = await cbCall('/api/clipboard/file?name=' + encodeURIComponent(first.body.name) + '&head=2', undefined, 'GET')
+  check(head.body.ok === true && head.body.text === 'line1\nline2' && head.body.trimmed === true,
+    'file 按 head 截断正文并标 trimmed')
+
+  const traversal = await cbCall('/api/clipboard/file?name=' + encodeURIComponent('../config.json'), undefined, 'GET')
+  check(traversal.status === 400 && traversal.body.code === 'clipboard/invalid', 'name 含 ../ → 400 clipboard/invalid')
+
+  const emptyText = await cbCall('/api/clipboard/paste', { text: '' })
+  check(emptyText.status === 400 && emptyText.body.code === 'clipboard/invalid', '空 text → 400 clipboard/invalid')
+
+  const cfg = await cbCall('/api/clipboard/config', undefined, 'GET')
+  check(cfg.body.ok === true && cfg.body.limits.thresholdChars === 2000 && cfg.body.limits.thresholdLines === 30,
+    'config 默认阈值 2000 字符 / 30 行')
+  const saved = await cbCall('/api/clipboard/config', { enabled: false, thresholdChars: 50, thresholdLines: 5 })
+  check(saved.body.limits.enabled === false && saved.body.limits.thresholdChars === 50,
+    'POST config 覆盖开关与阈值（合并写，不清空其它字段）')
+  const bigText = 'y'.repeat(5 * 1024 * 1024)
+  const big = await cbCall('/api/clipboard/paste', { text: bigText, mime: 'text/plain' })
+  check(big.body.bytes === Buffer.byteLength(bigText) && (await fs.readFile(big.body.path, 'utf8')) === bigText,
+    '5 MB 文本完整写入、不截断（上限已移除）')
+
+  const removed = await cbCall('/api/clipboard/delete', { name: first.body.name })
+  check(removed.body.ok === true && removed.body.removed === true, 'delete 返回 removed=true')
+  const removedAgain = await cbCall('/api/clipboard/delete', { name: first.body.name })
+  check(removedAgain.status === 404 && removedAgain.body.code === 'clipboard/not-found', '重复删除 → 404 clipboard/not-found')
+  check(list.body.items.length === 3 && (await fs.readdir(path.join(CB_DATA, first.body.dir))).every((n) => n !== first.body.name),
+    'delete 真删文件')
+
+  // ── 清理：默认关、按天数、按总量、索引里的越界路径不删 ──
+  const cfgDefaults = await cbCall('/api/clipboard/config', undefined, 'GET')
+  check(cfgDefaults.body.limits.cleanupEnabled === false && cfgDefaults.body.limits.cleanupMaxAgeDays === 30
+    && cfgDefaults.body.limits.cleanupMaxTotalBytes === 0,
+    '清理默认关闭：保留 30 天、不按总量限制')
+  const cfgCleanup = await cbCall('/api/clipboard/config', { cleanupEnabled: true, cleanupMaxAgeDays: 0, cleanupMaxTotalBytes: 100 })
+  check(cfgCleanup.body.limits.cleanupEnabled === true && cfgCleanup.body.limits.cleanupMaxTotalBytes === 100
+    && cfgCleanup.body.limits.thresholdChars === 50,
+    'POST config 也能写清理设置，且不清空已有阈值')
+  // 关掉自动清理再继续：否则后面每次 list / paste 都会按新阈值清空沙箱数据。
+  await cbCall('/api/clipboard/config', { cleanupEnabled: false, cleanupMaxAgeDays: 30, cleanupMaxTotalBytes: 0 })
+
+  const indexFile = path.join(CB_DATA, 'index.json')
+  const index = JSON.parse(await fs.readFile(indexFile, 'utf8'))
+  const oldDir = path.join(CB_DATA, '2026-01-01')
+  await fs.mkdir(oldDir, { recursive: true, mode: 0o700 })
+  const oldFile = path.join(oldDir, '000000-deadbeef.txt')
+  await fs.writeFile(oldFile, 'old', { mode: 0o600 })
+  const outsideFile = path.join(TMP_ROOT, 'outside-clipboard.txt')
+  await fs.writeFile(outsideFile, 'outside')
+  const DAY = 24 * 60 * 60 * 1000
+  index.items.push({ name: '000000-deadbeef.txt', dir: '2026-01-01', path: oldFile, bytes: 3, lines: 1, mime: 'text/plain', at: Date.now() - 400 * DAY, hits: 1 })
+  index.items.push({ name: 'outside-clipboard.txt', dir: '2026-01-01', path: outsideFile, bytes: 7, lines: 1, mime: 'text/plain', at: Date.now() - 400 * DAY, hits: 1 })
+  const big1 = path.join(CB_DATA, '2026-06-01')
+  await fs.mkdir(big1, { recursive: true, mode: 0o700 })
+  const bigA = path.join(big1, '000001-aaaaaaaa.txt')
+  const bigB = path.join(big1, '000002-bbbbbbbb.txt')
+  await fs.writeFile(bigA, 'A'.repeat(1024 * 1024), { mode: 0o600 })
+  await fs.writeFile(bigB, 'B'.repeat(1024 * 1024), { mode: 0o600 })
+  index.items.push({ name: '000001-aaaaaaaa.txt', dir: '2026-06-01', path: bigA, bytes: 1024 * 1024, lines: 1, mime: 'text/plain', at: Date.now() - 3 * DAY, hits: 1 })
+  index.items.push({ name: '000002-bbbbbbbb.txt', dir: '2026-06-01', path: bigB, bytes: 1024 * 1024, lines: 1, mime: 'text/plain', at: Date.now() - DAY, hits: 1 })
+  await fs.writeFile(indexFile, JSON.stringify(index, null, 2))
+
+  const cleaned = await cbCall('/api/clipboard/cleanup', { maxAgeDays: 400, maxTotalBytes: 0 })
+  check(cleaned.body.ok === true && cleaned.body.removed === 1 && cleaned.body.names.includes('outside-clipboard.txt') === false
+    && cleaned.body.names.includes('000000-deadbeef.txt'),
+    '按天数清理：只删过期条目，索引里指向沙箱外的路径被跳过')
+  check(cleaned.body.skipped >= 1 && await fs.stat(oldFile).then(() => false).catch(() => true),
+    '过期文件真删了；越界条目既没删文件也不算进 removed')
+  check(await fs.stat(outsideFile).then(() => true).catch(() => false), '越界文件原封不动')
+
+  const beforeSize = (await cbCall('/api/clipboard/list', undefined, 'GET')).body.totalBytes
+  const bySize = await cbCall('/api/clipboard/cleanup', { maxAgeDays: 0, maxTotalBytes: beforeSize - 1024 * 1024 })
+  check(bySize.body.ok === true && bySize.body.freedBytes >= 1024 * 1024 && bySize.body.names.length === 1
+    && bySize.body.names[0] === '000001-aaaaaaaa.txt',
+    '按总量清理：腾出空间即停，只删最旧那一条')
+  check(await fs.stat(bigA).then(() => false).catch(() => true) && await fs.stat(bigB).then(() => true).catch(() => false),
+    '删除顺序是按时间从旧到新（旧的大文件被删、新的保留）')
+  check((await cbCall('/api/clipboard/list', undefined, 'GET')).body.totalBytes <= beforeSize - 1024 * 1024,
+    '清理后总量落到上限以内')
+  const noop = await cbCall('/api/clipboard/cleanup', { maxAgeDays: 0, maxTotalBytes: 0 })
+  check(noop.body.removed === 0, '两个维度都为 0 时不删任何东西（0 = 不限）')
+  const cbClientText = await fs.readFile(path.join(ROOT, 'client.js'), 'utf8')
+  check(cbClientText.includes('/api/clipboard/cleanup') && cbClientText.includes('自动清理'),
+    '构建产物里带「立即清理 / 自动清理」界面与清理路由')
+} catch (e) {
+  fail('剪贴板 Host 用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+}
+
+// ── 4.6 剪贴板 Client：阈值边界、扩展名选择、@ 引用插入 ──
+try {
+  const handlers = DOM_LISTENERS.get('paste') || []
+  check(handlers.length === 1, 'client 注册了 capture 阶段的 paste 监听（一个）')
+
+  const makeTarget = () => ({
+    nodeType: 1,
+    tagName: 'TEXTAREA',
+    value: '',
+    selectionStart: 0,
+    selectionEnd: 0,
+    inserted: '',
+    parentElement: null,
+    setRangeText(text) { this.inserted += text; this.value += text },
+    dispatchEvent() { return true },
+  })
+  const makePaste = (pairs, target, extra) => ({
+    clipboardData: { types: Object.keys(pairs), getData: (type) => (pairs[type] === undefined ? '' : pairs[type]) },
+    target,
+    defaultPrevented: false,
+    shiftKey: false,
+    preventDefault() { this.defaultPrevented = true },
+    stopPropagation() {},
+    ...(extra || {}),
+  })
+
+  let answer = { name: 'x.txt', path: '/tmp/clip/x.txt', lines: 30, bytes: 10, reused: false }
+  let failNext = false
+  const sent = []
+  globalThis.fetch = async (url, init) => {
+    let body = null
+    try { body = init !== undefined && init.body ? JSON.parse(init.body) : null } catch { body = null }
+    sent.push({ url: String(url), body })
+    if (failNext === true) throw new Error('落盘失败')
+    return {
+      ok: true,
+      status: 200,
+      async text() { return JSON.stringify({ ok: true, ...answer }) },
+    }
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+  const handler = handlers[0]
+
+  let event = makePaste({ 'text/plain': 'a'.repeat(1999) }, makeTarget())
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === false && sent.length === 0, '1999 字符不拦截、不发请求（阈值 2000）')
+
+  const target = makeTarget()
+  event = makePaste({ 'text/plain': 'a'.repeat(2000) }, target)
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === true && sent.length === 1, '2000 字符拦截并发起落盘请求')
+  check(sent[0].url === '/api/clipboard/paste' && sent[0].body.mime === 'text/plain',
+    '只带一种 text/* 时按它的 mime 上报')
+  check(target.inserted === '@/tmp/clip/x.txt\n', '插入 @ 引用（无空白路径不加引号）')
+
+  const spaceTarget = makeTarget()
+  answer = { name: 'y.txt', path: '/tmp/clip dir/y.txt', lines: 5, bytes: 5, reused: true }
+  event = makePaste({ 'text/plain': 'b'.repeat(2000) }, spaceTarget)
+  handler(event)
+  await settle()
+  check(spaceTarget.inserted === '@"/tmp/clip dir/y.txt"\n', '路径含空格时引用写成 @"…"')
+
+  const linesOf = (count) => Array.from({ length: count }, (_, i) => 'l' + i).join('\n')
+  event = makePaste({ 'text/plain': linesOf(29) }, makeTarget())
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === false, '29 行不拦截（阈值 30 行）')
+
+  event = makePaste({ 'text/plain': linesOf(30) }, makeTarget())
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === true, '30 行拦截（字符数远低于 2000）')
+
+  sent.length = 0
+  event = makePaste({ 'text/html': '<b>' + 'x'.repeat(2000) + '</b>' }, makeTarget())
+  handler(event)
+  await settle()
+  check(sent.length === 1 && sent[0].body.mime === 'text/html', '只有 text/html → 上报 mime text/html')
+
+  sent.length = 0
+  event = makePaste({ 'text/plain': 'p'.repeat(2000), 'text/html': '<i>' + 'y'.repeat(2000) + '</i>' }, makeTarget())
+  handler(event)
+  await settle()
+  check(sent.length === 1 && sent[0].body.mime === 'text/plain',
+    '多份文本格式 → 取纯文本那一份（扩展名与内容都由它决定）')
+
+  sent.length = 0
+  event = makePaste({ 'image/png': 'binary' }, makeTarget())
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === false && sent.length === 0, '只有图片 → 完全不介入，走原生粘贴')
+
+  failNext = true
+  const fallbackTarget = makeTarget()
+  event = makePaste({ 'text/plain': 'z'.repeat(2000) }, fallbackTarget)
+  handler(event)
+  await settle()
+  check(fallbackTarget.inserted === 'z'.repeat(2000), '落盘失败 → 把原文插回编辑区，内容不丢')
+
+  const shiftTarget = makeTarget()
+  event = makePaste({ 'text/plain': 'q'.repeat(2000) }, shiftTarget, { shiftKey: true })
+  handler(event)
+  await settle()
+  check(event.defaultPrevented === false, 'Shift+粘贴 放行原生行为')
+} catch (e) {
+  fail('剪贴板 Client 用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+} finally {
+  globalThis.fetch = NATIVE_FETCH
+}
+
+await fs.rm(TMP_ROOT, { recursive: true, force: true }).catch(() => {})
 
 console.log(failed === 0 ? '客户端 + Host 自检通过' : `自检失败：${failed} 项`)
 process.exit(failed === 0 ? 0 : 1)

@@ -156,7 +156,7 @@
 #
 - insert:
     - id: dsh-toolkit
-      name: './live-entry-67.js'
+      name: './live-entry-70.js'
 
 # live-entry-66.js：数据落点重构 + 设置分页。
 #   66 去掉 image-gen/migrate.js（不再自动迁移老数据），数据按组件分目录
@@ -170,3 +170,23 @@
 #   版本：model-test ?v=13，其余同 66。
 
 # probe touch 20261021-144716
+
+# live-entry-68.js：新增剪贴板组件（长文本粘贴 → 文件 + 输入框 @ 引用）。
+#   粘贴超过阈值（默认 2000 字符 / 30 行）的长文本时落成
+#   $DSH_HOME/dsh-toolkit/clipboard/<日期>/<HHmmss>-<sha1 前 8 位>.<ext>，
+#   输入框只插一行 `@"绝对路径"`；扩展名只看剪贴板带了哪种文本格式
+#   （只带一种按它取、多份统一 .txt），不按内容猜；图片/文件粘贴不介入。
+#   路由：/api/clipboard/{paste,list,file,delete,config}；分页 order 50。
+#   版本：clipboard ?v=1、toolkit ?v=2（设置分页多一块 clipboard），其余同 67。
+
+# live-entry-69.js：剪贴板去掉「单次上限 / 内容截断」。
+#   粘贴内容一律完整写盘，不再按 4 MiB 截断（`truncated` 字段、CLIPBOARD_MAX_BYTES
+#   环境变量、面板「已截断」徽章与「单次上限(MB)」输入一并移除）；
+#   预览仍只读前 200 行 / 64 KiB，不影响落盘内容。
+#   版本：clipboard ?v=2，其余同 68。
+
+# live-entry-70.js：剪贴板加自动清理（默认关闭：保留 30 天、不按总量限制）。
+#   粘贴落盘与刷新列表时顺手清理一次，面板另有「立即清理」按钮；
+#   配置 cleanupEnabled / cleanupMaxAgeDays / cleanupMaxTotalBytes 落在 clipboard/config.json，
+#   只处理 <根>/<YYYY-MM-DD>/ 里的文件，索引里指向别处的路径一律跳过。
+#   版本：clipboard ?v=3、toolkit ?v=3（设置分页的 clipboard 块引用 paths ?v=3），其余同 69。

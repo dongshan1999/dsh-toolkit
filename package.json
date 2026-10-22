@@ -2,7 +2,7 @@
   "name": "dsh-toolkit",
   "version": "0.2.0",
   "type": "module",
-  "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）、Token 用量/成本/活跃度面板，模型连接与速度测试面板（支持整批 / 整组 / 组内单个模型）、通知面板（会话完成 / 需要权限 / 模型失败 / 子智能体等 16 类事件，支持系统级通知），以及 MCP server 与 Skill 管理面板（增删改查 / 启停 / 连接测试 / frontmatter 校验）。",
+  "description": "DSH bundle：图片生成面板（generate_image 工具 + 侧边栏图库/提示词库）、Token 用量/成本/活跃度面板，模型连接与速度测试面板（支持整批 / 整组 / 组内单个模型）、通知面板（会话完成 / 需要权限 / 模型失败 / 子智能体等 16 类事件，支持系统级通知）、MCP server 与 Skill 管理面板（增删改查 / 启停 / 连接测试 / frontmatter 校验），以及剪贴板面板（超长粘贴自动落盘，输入框只留 @ 引用）。",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -28,7 +28,9 @@
     "mcp",
     "model-context-protocol",
     "skill",
-    "skill-management"
+    "skill-management",
+    "clipboard",
+    "paste"
   ],
   "scripts": {
     "build": "node build.mjs",
@@ -44,6 +46,7 @@
     "./token-usage": "./components/token-usage/host.js",
     "./mcp": "./components/mcp/host.js",
     "./skill": "./components/skill/host.js",
+    "./clipboard": "./components/clipboard/host.js",
     "./toolkit": "./components/toolkit/host.js",
     "./client": "./client.js",
     "./package.json": "./package.json"

@@ -1,16 +1,15 @@
-// live-entry-67.js：去掉模型测试「探针」后的入口。
-// 承接 66（66 是数据落点重构后的版本，这里不改 66，避免影响并行工作区）。
-// 67 的改动：
-//   1) 删除 POST /api/model-test/probe 路由与其四个辅助函数（runCapabilityCall /
-//      getRedProbeImage / capabilityCheck / isExplicitlyUnsupported）。
-//   2) 模型测试面板去掉「探针」按钮和探针结果卡片：真实参数本来就在「参数 → DSH 配置」里读
-//      适配器声明（resolveModelInfo），探针只能验证「声明是否生效」，成本与结论都不划算。
-//   3) model-test/host.js 内部 probeModel 改名为 measureModel（它其实是测速的单次调用，
-//      与已删除的「能力探针」无关，避免再被误读）。
-// 67.1：模型行头去掉参数/预设徽章（信息移进「参数」抽屉）；diff 忽略 off 档位。
-// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=14（dsh-config ?v=13）、notifications ?v=10、
-//       mcp ?v=2、skill ?v=2、toolkit ?v=1。
-// 自检：`node -e "import('./live-entry-67.js')"` 应输出 ok 且 inject 里含 'timer'。
+// live-entry-70.js：剪贴板加上「自动清理」后的入口。
+// 承接 69。
+// 70 的改动：
+//   1) 剪贴板新增清理：config.json 里 cleanupEnabled / cleanupMaxAgeDays /
+//      cleanupMaxTotalBytes 三个字段（默认 关闭 / 30 天 / 不限），
+//      粘贴与刷新列表时顺手清理一次，面板另有「立即清理」按钮。
+//   2) 新增 POST /api/clipboard/cleanup：按天数删过期条目、按总量从最旧开始删，
+//      只动 <根>/<YYYY-MM-DD>/ 下的文件，索引里指向别处的路径一律跳过。
+//   3) store.js 修 writeConfig 的 undefined 覆盖问题（保存清理设置不再把阈值清回默认）。
+// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=16、notifications ?v=10、
+//       mcp ?v=2、skill ?v=2、clipboard ?v=3、toolkit ?v=3。
+// 自检：`node -e "import('./live-entry-70.js')"` 应输出 ok 且 inject 里含 'timer'。
 import { inject as imageGenInject, apply as imageGenApply } from './components/image-gen/host.js?v=44'
 import { inject as imageGenGalleryInject, apply as imageGenGalleryApply } from './components/image-gen/gallery-page.js?v=44'
 import { inject as imageGenActionsInject, apply as imageGenActionsApply } from './components/image-gen/gallery-actions.js?v=44'
@@ -20,11 +19,12 @@ import { inject as imageGenGenerateInject, apply as imageGenGenerateApply } from
 import { inject as imageGenLibraryInject, apply as imageGenLibraryApply } from './components/image-gen/library-routes.js?v=44'
 import { inject as tokenUsageInject, apply as tokenUsageApply } from './components/token-usage/host.js?v=29'
 import { inject as tokenActivityInject, apply as tokenActivityApply } from './components/token-usage/activity.js?v=29'
-import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=14'
+import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=16'
 import { inject as notificationsInject, apply as notificationsApply } from './components/notifications/host.js?v=10'
 import { inject as mcpInject, apply as mcpApply } from './components/mcp/host.js?v=2'
 import { inject as skillInject, apply as skillApply } from './components/skill/host.js?v=2'
-import { inject as toolkitInject, apply as toolkitApply } from './components/toolkit/host.js?v=1'
+import { inject as clipboardInject, apply as clipboardApply } from './components/clipboard/host.js?v=3'
+import { inject as toolkitInject, apply as toolkitApply } from './components/toolkit/host.js?v=3'
 
 export const name = 'dsh-toolkit'
 
@@ -42,6 +42,7 @@ const parts = [
   { id: 'notifications', inject: notificationsInject, apply: notificationsApply },
   { id: 'mcp', inject: mcpInject, apply: mcpApply },
   { id: 'skill', inject: skillInject, apply: skillApply },
+  { id: 'clipboard', inject: clipboardInject, apply: clipboardApply },
   { id: 'toolkit', inject: toolkitInject, apply: toolkitApply },
 ]
 

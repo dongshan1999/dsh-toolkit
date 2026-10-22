@@ -1,9 +1,8 @@
 # 功能案：Skill 管理（components/skill）
 
 > 状态：已实现
-> 关联组件：`components/skill/`（host.js + client.js + README.md）
+> 关联组件：`components/skill/`（host.js + client.js）
 > 面板位置：侧边栏「工具集」（order 48）→ 分页「Skill」（order 54）
-> 同步维护：本文与 `components/skill/README.md` 保持一致，改动时请同时更新。
 
 ## 1. 要解决的问题
 
@@ -73,7 +72,6 @@ DSH 的 skill 是磁盘上的 Markdown 文件（`SKILL.md` 或 `<name>.md`），
 |---|---|
 | `host.js` | HTTP 路由 + 磁盘扫描 + frontmatter 校验 + 原子写（无第三方裸 import，依赖走 `createRequire` 锚点） |
 | `client.js` | 浏览器面板源码（由根目录 `node build.mjs` 包装进统一入口） |
-| `README.md` | 组件说明，与本功能案同步维护 |
 
 ## 4. 目录与文件布局
 
@@ -143,6 +141,9 @@ handler 内按 `request.method` 分流。
 | POST | `/api/skill/toggle` | `{ root, name, modelInvocable?, userInvocable? }` | → `{ ok, path, rootId, name, parsed, valid, issues }`；只改两个布尔 |
 | POST | `/api/skill/sync` | — | 调官方 `skills.snapshot()`，返回 `{ ok, official:{ available, complete, count, names, error } }` |
 
+- 路由前缀与既有的 `/api/toolkit/*`、`/api/model-test/*` 不冲突。
+- 新建（`POST /api/skill/create`）未给 `body` 时，默认正文为 `# <name>` + description。
+
 ### 6.1 结构化写入生成的文本
 
 ```markdown
@@ -195,6 +196,9 @@ disable-model-invocation: true
   description / whenToUse / 目录型或文件型）。
 - **右列**：原文编辑框 + 结构化表单（Tab 切换）、保存、放弃改动、两个调用开关、删除、只读提示、
   `issues` 列表与资源文件清单。有未保存改动时显示「有未保存改动」，切换 skill 前 `confirm` 确认。
+- 字段语义补充：`kind` 取值 `directory` / `file` / `broken`（`broken` 指根目录都读不了）；
+  `valid:false` 时 `error` / `issues` 一定有内容；`shadowedBy` 为 `{ rootId, path }`，表示被更高
+  优先级的根盖住；`issues` 含**非致命的警告**。
 
 ### 6.3 错误码
 
@@ -303,3 +307,23 @@ disable-model-invocation: true
 - 结构化表单的 `metadata` 只接受普通对象（数组、函数、循环引用一律拒绝），避免写出扫描器不认的
   YAML。
 - 面板是「管理界面」不是「IDE」：没有 diff、没有多选、没有拖拽排序。
+
+## 12. 附录：实现补充
+
+> 本节收录原组件说明中正文未展开的实现事实。
+
+### 12.1 依赖解析（为什么 host.js 没有 `import 'yaml'`）
+
+- 本仓库被 link 安装到 `~/.dsh/profiles/desktop/node_modules/dsh-toolkit`，ESM 从**真实路径**
+  向上解析依赖；仓库自身没有 `node_modules`，裸 `import 'yaml'` 直接 `ERR_MODULE_NOT_FOUND`。
+- 所以 `host.js` 用 `createRequire` 锚到 profile 的 `package.json` 再 `req()`，三个锚点依次尝试：
+  1. `ctx.get('profileContext').dir` + `/package.json`
+  2. `$DSH_HOME/profiles/desktop/package.json`
+  3. `~/.dsh/profiles/desktop/package.json`
+- 惰性解析 + 每个锚点 `try/catch`：解析失败只把 `dependencyError` 带到 `/api/skill/meta`
+  （面板显示「yaml 不可用」），**不会让 host 崩掉**。
+
+### 12.2 本机环境事实
+
+- `user-dsh` 根（`~/.dsh/skills`）在本机现有 `constraint-driven-development`、`interview-me` 两个
+  skill，可作为「用户级」示例。

@@ -1,6 +1,7 @@
 // @local/dsh-toolkit — 图片生成（image-gen）+ Token 用量与活跃度（token-usage）
 //                     + 模型测试（model-test）+ 通知（notifications）
 //                     + MCP 管理（mcp）+ Skill 管理（skill）
+//                     + 剪贴板长文本转文件（clipboard）
 //                     + 工具集壳的「设置」分页（toolkit）
 //
 // 运行时数据按组件分开收在 $DSH_HOME/dsh-toolkit/<组件>/ 下（DSH_TOOLKIT_DATA 可整体改道）；
@@ -18,6 +19,7 @@ import { inject as modelTestInject, apply as modelTestApply } from './components
 import { inject as notificationsInject, apply as notificationsApply } from './components/notifications/host.js'
 import { inject as mcpInject, apply as mcpApply } from './components/mcp/host.js'
 import { inject as skillInject, apply as skillApply } from './components/skill/host.js'
+import { inject as clipboardInject, apply as clipboardApply } from './components/clipboard/host.js'
 import { inject as toolkitInject, apply as toolkitApply } from './components/toolkit/host.js'
 
 export const name = 'dsh-toolkit'
@@ -36,6 +38,7 @@ const parts = [
   { id: 'notifications', inject: notificationsInject, apply: notificationsApply },
   { id: 'mcp', inject: mcpInject, apply: mcpApply },
   { id: 'skill', inject: skillInject, apply: skillApply },
+  { id: 'clipboard', inject: clipboardInject, apply: clipboardApply },
   { id: 'toolkit', inject: toolkitInject, apply: toolkitApply },
 ]
 

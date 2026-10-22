@@ -64,7 +64,7 @@ import {
   summarizeEntry,
   writeModelConfig,
   WRITABLE_FIELDS,
-} from './dsh-config.js?v=13'
+} from './dsh-config.js?v=15'
 
 export const name = 'model-test'
 export const inject = ['connection', 'llm', 'timer']

@@ -1,9 +1,8 @@
 # 功能案：MCP 管理（components/mcp）
 
 > 状态：已实现
-> 关联组件：`components/mcp/`（host.js + client.js + README.md）
+> 关联组件：`components/mcp/`（host.js + client.js）
 > 面板位置：侧边栏「工具集」（order 48）→ 分页「MCP」（order 53）
-> 同步维护：本文与 `components/mcp/README.md` 保持一致，改动时请同时更新。
 
 ## 1. 要解决的问题
 
@@ -75,7 +74,6 @@ DSH 里每个 MCP server 都是一个 `@deepseek-ai/dsh-mcp-client` 插件实例
 |---|---|
 | `host.js` | HTTP 路由 + YAML 读写（`parseDocument` 保真）+ 表单校验 + 一次性探活；无第三方裸 import，依赖走 `createRequire` 锚点 |
 | `client.js` | 浏览器面板源码，由根目录 `node build.mjs` 包装进统一入口 |
-| `README.md` | 组件说明，与本功能案同步维护 |
 
 ## 4. 数据模型
 
@@ -142,6 +140,9 @@ type McpServer = {
 | POST | `/api/mcp/server/enabled` | `{ id, enabled }` | 只翻转 disabled，返回写入后的 `servers` |
 | POST | `/api/mcp/test` | `{ config }` 或 `{ id }` | 一次性探活，见 5.3 |
 | POST | `/api/mcp/reload` | — | 显式 `hmr.runExclusive(() => hmr.reconcileProfile([...]))`，返回 `{ warnings, applied?, note? }` |
+
+- 路由前缀与 `/api/toolkit/*`、`/api/model-test/*`、`/api/skill/*` 不冲突。
+- 同 path 的 GET/POST 与 DELETE 分成两次注册，handler 内按 `request.method` 分流。
 
 写操作的成功响应都带 `{ applied, warnings, note }`：`applied:false` + `note` 表示「配置已写入磁盘，
 但 hmr 不可用，需要重启 DSH 生效」，不会假装热更。
@@ -252,6 +253,7 @@ normalized.slice(0, 64 - 12 - 1) + '_' + hash
 7. **脱敏值绝不回写磁盘。** 面板默认拿的是脱敏后的字典；用户没点「显示密钥」就保存时，客户端带
    `preserveSecrets:true`，服务端从**旧 config** 搬运真实 `env` / `headers`，不会把 `"abcd…"`
    写进 `cordis.patch.yml`。这条是 `[3b]` 自检里专门断言的核心项。
+8. **不用裸 `writeFile`。** 半截 YAML 会让整轮 Loader 回滚。
 
 ## 7. 热更与降级
 
@@ -330,3 +332,45 @@ normalized.slice(0, 64 - 12 - 1) + '_' + hash
 - **条目 id 与 serverName 是两回事**：id 是 patch 里的 Loader entry id（可任意，默认
   `mcp-<serverName>`），serverName 才是工具名前缀的来源；改 serverName 会让工具名整批改变。
 - 删除操作不做回收站；删除即从 patch 移除（git 可恢复，前提是用户把 profile 纳入了版本管理）。
+
+## 11. 附录：实现补充
+
+> 本节收录原组件说明中正文未展开的实现事实。
+
+### 11.1 官方三条写入通道的完整对照
+
+| 通道 | 能做什么 | 为什么不够 |
+|---|---|---|
+| `settings.mutate(ns, ops)` | 改**已存在** entry 的 volatile 字段 | mcp-client 的 Config 是 `z.union([stdio, streamable-http])`，源码里没有 `volatile` 标记 → `settings.describe()` 对它直接返回 `[]`，`mutate` 抛 `Plugin entry "<ns>" has no volatile fields` |
+| `configEditor.edit(entry, change)` | 改**已存在** entry 的 config | 源码里没有新增 / 删除 entry 的路径 |
+| `pluginManager.setPluginEnabled(id, enabled)` | 翻 `disabled` | 写不了 config，也建不出新条目 |
+
+### 11.2 `parseDocument` 保真的实测记录（C4 补充）
+
+除 C4 的整文件往返外，还在同一份真实 profile（36493 字节、21 个顶层 item、14 处 `!!js`、
+7 处块标量、大量注释）上实测：
+
+- 新增一条再删掉它，结果与原文**逐字节相同**；
+- 改 `disabled` 前后**行数不变**；
+- 该写法与官方 `config-editor` / `plugin-manager` 内部用的是同一套姿势。
+
+### 11.3 streamable-http 条目与 `disabled` 覆盖行示例
+
+```yaml
+- insert:
+    - id: mcp-godot
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: streamable-http
+        serverName: godot
+        url: https://example.com/mcp
+        headers: { Authorization: 'Bearer …' }
+- id: mcp-godot
+  disabled: true
+```
+
+### 11.4 设计理由
+
+- `loader` 自己写回 patch 会**丢掉所有注释**；手写字符串替换又会破坏 `!!js` 语义——所以必须用
+  `parseDocument` 保真写入。
+- 探活的 20 秒硬超时用 `Promise.race` 实现，`finally` 里同时关闭 `client` 与 `transport`。
