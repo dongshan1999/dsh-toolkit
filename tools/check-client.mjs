@@ -690,7 +690,7 @@ if (mtPanel !== undefined) {
     usage: { inputTokens: 12, outputTokens: 64, totalTokens: 76, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 },
     tokensPerSecond: 46.4, at: now, ...over,
   })
-  // 槽位：0 catalog / 1 results / 2 running / 3 pending / 4 collapsed / 5 notice / 6 options / 7 prompt
+  // 槽位：0 catalog / 1 results / 2 running / 3 pending / 4 expanded / 5 notice / 6 options / 7 prompt
   //       8 overrides / 9 editing / 10 draft / 11 saving / 12 defaults / 13 snippet
   //       14 dshState / 15 dshWriting
   // （useRef 不消耗 slot，所以 seq / rootRef 不占位。）
@@ -699,7 +699,8 @@ if (mtPanel !== undefined) {
     over.results || {},
     over.running === true,
     over.pending || [],
-    over.collapsed || [],
+    // 收纳状态存「展开过的组」：面板默认全收，渲染类用例需要看到模型行，所以默认两组合都展开。
+    over.expanded !== undefined ? over.expanded : ['dl', 'xiaomi'],
     over.notice || null,
     over.options || { timeoutMs: 30000, maxTokens: 64, concurrency: 3 },
     over.prompt || 'ping',
@@ -833,34 +834,40 @@ if (mtPanel !== undefined) {
     const perModel = expanded.filter((node) => node.type === 'button' && textOf(node) === '测试')
     check(perModel.length === 3, `展开后每个模型各一个「测试」（当前 ${perModel.length} 个）`)
 
-    const collapsedSlots = mtSlots(mtCatalog(), { collapsed: ['dl'] })
+    // 默认全收：内容多时先只看组名和计数，展开才显示组内模型行。
+    const defaultSlots = mtSlots(mtCatalog(), { expanded: [] })
+    const defaultNodes = mtNodes(defaultSlots)
+    check(defaultNodes.filter((node) => node.props.className === 'mt-group-head').length === 2, '默认收起时两组组头都在')
+    check(!defaultNodes.some((node) => node.type === 'button' && textOf(node) === '测试'), '默认收起时不渲染模型行')
+    check(mtButton(defaultNodes, '收起全部') === undefined && mtButton(defaultNodes, '展开全部') === undefined, '顶部不再有「收起全部 / 展开全部」按钮')
+
+    const collapsedSlots = mtSlots(mtCatalog(), { expanded: ['xiaomi'] })
     const collapsed = mtNodes(collapsedSlots)
     check(!collapsed.some((node) => textOf(node) === 'GPT-6 Sol'), '收起的组不渲染组内模型行')
-    check(collapsed.some((node) => textOf(node) === 'MiMo v2.6 Pro'), '其它组不受折叠影响')
-    const caret = collapsed.find((node) => node.type === 'button' && node.props.className === 'mt-caret')
-    if (caret === undefined) fail('模型测试组头缺少折叠开关')
+    check(collapsed.some((node) => textOf(node) === 'MiMo v2.6 Pro'), '展开的组照常渲染模型行')
+    const carets = collapsed.filter((node) => node.props.className === 'mt-caret')
+    check(carets.length === 2 && textOf(carets[0]) === '▸' && textOf(carets[1]) === '▾', '组头箭头反映展开状态（▸ 收起 / ▾ 展开）')
+    const heads = collapsed.filter((node) => node.props.className === 'mt-group-head')
+    if (heads.length !== 2) fail('模型测试组头缺少折叠热区')
     else {
-      caret.props.onClick()
-      check(Array.isArray(collapsedSlots[4]) && collapsedSlots[4].length === 0, '点组头折叠开关恢复展开')
+      // 点组头（空白/组名/箭头都算）展开这一组；点在按钮上不切换。
+      heads[0].props.onClick({ target: null })
+      check(Array.isArray(collapsedSlots[4]) && collapsedSlots[4].includes('dl'), '点组头展开这一组')
+      const headButton = heads[1].children.find((child) => child !== null && child !== undefined && child.type === 'button')
+      if (headButton !== undefined) {
+        headButton.props.onClick({ target: headButton })
+        check(collapsedSlots[4].length === 2, '点组头里的按钮不会误触收起/展开')
+      }
     }
 
-    // 一键收纳：组多时逐组收太累，顶部给「收起全部 / 展开全部」。
-    const allSlots = mtSlots(mtCatalog())
-    const allNodes = mtNodes(allSlots)
-    const foldAll = mtButton(allNodes, '收起全部')
-    if (foldAll === undefined) fail('顶部缺少「收起全部」按钮')
+    // 收起状态下点「测试本组」：先展开这一组，结果才看得见。
+    const runGroupSlots = mtSlots(mtCatalog(), { expanded: [] })
+    const runGroupNodes = mtNodes(runGroupSlots)
+    const runGroupBtn = runGroupNodes.filter((node) => node.type === 'button' && textOf(node) === '测试本组')[1]
+    if (runGroupBtn === undefined) fail('收起状态下找不到「测试本组」按钮')
     else {
-      foldAll.props.onClick()
-      check(Array.isArray(allSlots[4]) && allSlots[4].length === 2 && allSlots[4].includes('dl') && allSlots[4].includes('xiaomi'),
-        `点「收起全部」把每个组都收起来（当前 ${JSON.stringify(allSlots[4])}）`)
-    }
-    const foldedNodes = mtNodes(mtSlots(mtCatalog(), { collapsed: ['dl', 'xiaomi'] }))
-    const unfoldAll = mtButton(foldedNodes, '展开全部')
-    if (unfoldAll === undefined) fail('全部收起后按钮没有变成「展开全部」')
-    else {
-      const unfoldSlots = mtSlots(mtCatalog(), { collapsed: ['dl', 'xiaomi'] })
-      mtNodes(unfoldSlots).find((node) => node.type === 'button' && textOf(node) === '展开全部').props.onClick()
-      check(Array.isArray(unfoldSlots[4]) && unfoldSlots[4].length === 0, '点「展开全部」清空折叠集合')
+      runGroupBtn.props.onClick()
+      check(Array.isArray(runGroupSlots[4]) && runGroupSlots[4].includes('xiaomi'), '点「测试本组」先展开该组')
     }
 
     // 两种批量入口的按钮必须真的禁用不同范围：running 时全部禁用。
@@ -2035,27 +2042,6 @@ try {
       const signal = options.signal
       const key = options.provider + '/' + options.model
       return (async function* () {
-        // 能力探针的三类请求：工具调用 / 图片输入 / 小输出上限。
-        if (Array.isArray(options.tools) && options.tools.length > 0) {
-          await sleep(2)
-          yield { type: 'tool-call-delta', index: 0, id: 'call_probe', name: 'probe_capability', argumentsDelta: '{"marker":"MODEL_TEST_PROBE"}' }
-          yield { type: 'finish', reason: { kind: 'tool-calls' } }
-          return
-        }
-        const parts = Array.isArray(options.messages?.[0]?.content) ? options.messages[0].content : []
-        if (parts.some((part) => part.type === 'image')) {
-          await sleep(2)
-          yield { type: 'text-delta', index: 0, text: 'RED' }
-          yield { type: 'finish', reason: { kind: 'stop' } }
-          return
-        }
-        if (options.maxTokens === 16) {
-          await sleep(2)
-          yield { type: 'text-delta', index: 0, text: '1 2 3 4 5' }
-          yield { type: 'usage', usage: { inputTokens: 12, outputTokens: 16, totalTokens: 28 } }
-          yield { type: 'finish', reason: { kind: 'max-tokens' } }
-          return
-        }
         if (key === 'dl/gpt-6-sol') {
           await sleep(5)
           yield { type: 'text-delta', index: 0, text: 'po' }
@@ -2114,14 +2100,6 @@ try {
     },
   }
   const dshWrites = []
-  // 假的图片服务：探针只借它把一张微型 PNG 变成持久化引用，自检不写真实磁盘。
-  const savedImages = []
-  const fakeAttachments = {
-    saveImage: async (input) => {
-      savedImages.push({ mediaType: input.mediaType, bytes: input.data.length, name: input.name })
-      return { attachmentId: 'att-selfcheck', mediaType: input.mediaType, bytes: input.data.length, width: 8, height: 8, name: input.name }
-    },
-  }
   const fakeSettings = {
     describe: () => [{ ns: 'llm-pi-ai', revision: 5, value: { providers: dshConfig.providers } }],
     mutate: async (ns, ops, expected) => {
@@ -2146,7 +2124,6 @@ try {
     get(name) {
       if (name === 'llm') return fakeLlm
       if (name === 'settings') return fakeSettings
-      if (name === 'attachments') return fakeAttachments
       return undefined
     },
     connection: {
@@ -2484,31 +2461,12 @@ try {
       && !String(effortRow.afterText).includes('medium'),
       `档位建议以预设为准，多写的 medium 会被标成差异（after=${String(effortRow?.afterText)}）`)
 
-    // ㉒ 能力探针：三类可判定项 + 两项恒为 unknown。
-    calls.length = 0
-    const probe = await mtCall('/api/model-test/probe', { provider: 'dl', model: 'gpt-6-sol' })
-    const checkOf = (id) => (probe.body.checks ?? []).find((item) => item.id === id)
-    check(probe.status === 200 && probe.body.ok === true && probe.body.calls === 3,
-      `探针按需发起 3 次真实调用（calls=${probe.body.calls}）`)
-    check(checkOf('maxTokens')?.verdict === 'supported',
-      `maxTokens 以 max-tokens 结束时判 supported（${checkOf('maxTokens')?.verdict}）`)
-    check(checkOf('tools')?.verdict === 'supported',
-      `返回 tool-call 时工具调用判 supported（${checkOf('tools')?.verdict}）`)
-    check(checkOf('vision')?.verdict === 'supported',
-      `模型答出 RED 时图片输入判 supported（${checkOf('vision')?.verdict}）`)
-    check(checkOf('reasoningEffort')?.verdict === 'unknown' && checkOf('temperature')?.verdict === 'unknown',
-      '思考档位与 temperature 恒为无法判定，不伪称支持')
-    check(savedImages.length === 1 && savedImages[0].mediaType === 'image/png',
-      '图片探针用一张 8×8 PNG 走 attachments.saveImage')
-    check(calls.some((item) => item.tools !== null && item.tools.includes('probe_capability')),
-      '工具探针真的把 tools 声明发给了适配器')
-    check(calls.some((item) => item.contentTypes !== null && item.contentTypes.includes('image')),
-      '图片探针真的把 image 分块发给了适配器')
-
-    // ㉓ 参数校验：缺 provider / 缺 model。
-    const probeNoTarget = await mtCall('/api/model-test/probe', { model: 'gpt-6-sol' })
-    check(probeNoTarget.status === 400 && probeNoTarget.body.code === 'model-test/probe-target-required',
-      'POST /probe 缺 provider 时 400 + model-test/probe-target-required')
+    // 探针已删除：真实参数走「参数 → DSH 配置」（适配器声明），不再有按模型探测的第三条路。
+    const mtHostSource = await fs.readFile(path.join(ROOT, 'components', 'model-test', 'host.js'), 'utf8')
+    check(!/model-test\/probe/.test(mtHostSource) && !/runCapabilityCall|getRedProbeImage|capabilityCheck/.test(mtHostSource),
+      'model-test 不再注册探针路由，探测辅助函数已删除')
+    const mtClientSource = await fs.readFile(path.join(ROOT, 'components', 'model-test', 'client.js'), 'utf8')
+    check(!/mt-probe|runProbe|探针/.test(mtClientSource), 'model-test 面板不再有「探针」按钮与结果卡片')
   }
 } catch (e) {
   fail('model-test host 冒烟异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
@@ -3326,19 +3284,19 @@ try {
 {
   check(!(await exists(path.join(ROOT, 'components', 'image-gen', 'migrate.js'))),
     'components/image-gen/migrate.js 已删除')
-  for (const entry of ['index.js', 'live-entry-66.js']) {
+
+  // 当前入口从 cordis.patch.yml 解析，不写死文件名：换 live-entry-N 时自检自动跟随。
+  const patchText = await fs.readFile(path.join(ROOT, 'cordis.patch.yml'), 'utf8')
+  const patchEntry = (/name:\s*'\.\/(live-entry-\d+\.js)'/.exec(patchText) || [])[1]
+  check(Boolean(patchEntry), 'cordis.patch.yml 能解析出当前入口（live-entry-N.js）')
+  for (const entry of ['index.js', patchEntry].filter(Boolean)) {
     const text = await fs.readFile(path.join(ROOT, entry), 'utf8')
     check(!/migrateLegacyData/.test(text) && !/from '\.[^']*migrate\.js/.test(text),
       `${entry} 不再 import / 调用迁移模块`)
   }
-  check(await exists(path.join(ROOT, 'cordis.patch.yml'))
-    && (await fs.readFile(path.join(ROOT, 'cordis.patch.yml'), 'utf8')).includes("'./live-entry-66.js'"),
-    'cordis.patch.yml 指向 live-entry-66.js')
 
   // 只提交当前入口：.gitignore 放行的 live-entry-* 必须和 patch 指向的那个一致，
   // 否则换入口时忘了改例外，新入口会被静默忽略、仓库里只剩旧入口。
-  const patchText = await fs.readFile(path.join(ROOT, 'cordis.patch.yml'), 'utf8')
-  const patchEntry = (/name:\s*'\.\/(live-entry-\d+\.js)'/.exec(patchText) || [])[1]
   const allowedEntries = (await fs.readFile(path.join(ROOT, '.gitignore'), 'utf8'))
     .split('\n').map((line) => line.trim()).filter((line) => line.startsWith('!live-entry-'))
   check(Boolean(patchEntry) && allowedEntries.length === 1 && allowedEntries[0] === `!${patchEntry}`,

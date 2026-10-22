@@ -10,7 +10,6 @@
 //   POST /api/model-test/inspect        单个模型的能力画像：预设命中 / 适配器真实档位 / 生效参数 / YAML 片段
 //   GET  /api/model-test/dsh            读 DSH 里该 provider/model 的真实配置，并与预设建议逐字段比对
 //   POST /api/model-test/dsh            把预设建议写进 DSH 真实配置（mode=fill 只补缺 / replace 覆盖差异）
-//   POST /api/model-test/probe          按需探测单个模型的网关能力（真实计费，三态：支持/不支持/无法判定）
 //
 // 测试参数不再只有一个 maxTokens：按「本次指定 > 手工覆盖 > 整组默认 > 全局设置 > 预设建议」
 // 逐字段取值，再用适配器给出的**真实**能力（reasoning.efforts / defaultMaxTokens）做安全阀，
@@ -404,7 +403,7 @@ function planParams(target, options, library, overrides, live) {
  * 参数：temperature / maxTokens / reasoningEffort 三个都只在非 null 时才放进 stream() 调用，
  * 绝不给模型塞一个它不接受的字段（DSH 对 reasoningEffort 是硬校验，不做 clamp）。
  */
-async function probeModel(llm, target, options) {
+async function measureModel(llm, target, options) {
   const startedAt = Date.now()
   const controller = new AbortController()
   const state = {
@@ -553,131 +552,6 @@ function errorFields(cause) {
   return {
     code: typeof cause.code === 'string' ? cause.code : '',
     status: Number.isFinite(cause.status) ? cause.status : null,
-  }
-}
-
-function isExplicitlyUnsupported(result, hints) {
-  const message = `${result.code} ${result.message}`.toLowerCase()
-  const rejected = /unsupported|not supported|does not support|invalid parameter|unknown parameter|不支持|不接受/.test(message)
-  return rejected && hints.some((hint) => message.includes(hint))
-}
-
-async function runCapabilityCall(llm, target, spec) {
-  const startedAt = Date.now()
-  const controller = new AbortController()
-  const state = { finishKind: null, usage: null, text: '', toolCall: false, failure: null, timedOut: false }
-  let iterator = null
-  let settled = false
-  let timer = null
-
-  const abortNow = () => {
-    state.timedOut = true
-    try { controller.abort() } catch {}
-    try {
-      if (iterator !== null && typeof iterator.return === 'function') {
-        const closing = iterator.return()
-        if (closing !== null && typeof closing === 'object' && typeof closing.catch === 'function') closing.catch(() => {})
-      }
-    } catch {}
-  }
-
-  const consume = (async () => {
-    try {
-      const call = {
-        provider: target.provider,
-        model: target.model,
-        messages: [{ role: 'user', content: spec.content ?? [{ type: 'text', text: spec.prompt }] }],
-        signal: controller.signal,
-      }
-      if (Number.isFinite(spec.maxTokens)) call.maxTokens = spec.maxTokens
-      if (typeof spec.reasoningEffort === 'string') call.reasoningEffort = spec.reasoningEffort
-      if (Array.isArray(spec.tools)) call.tools = spec.tools
-      const stream = llm.stream(call)
-      iterator = stream[Symbol.asyncIterator]()
-      for (;;) {
-        const step = await iterator.next()
-        if (step === null || typeof step !== 'object' || step.done === true) break
-        const chunk = step.value
-        if (chunk === null || typeof chunk !== 'object') continue
-        if (chunk.type === 'text-delta' && typeof chunk.text === 'string') state.text = (state.text + chunk.text).slice(0, 1200)
-        if (chunk.type === 'tool-call-delta' && (typeof chunk.name === 'string' || chunk.argumentsDelta !== '')) state.toolCall = true
-        if (chunk.type === 'block-end' && chunk.block?.type === 'tool-call') state.toolCall = true
-        if (chunk.type === 'usage' && chunk.usage !== null && typeof chunk.usage === 'object') state.usage = chunk.usage
-        if (chunk.type === 'finish') {
-          const reason = chunk.reason
-          state.finishKind = reason !== null && typeof reason === 'object' && typeof reason.kind === 'string' ? reason.kind : null
-          if (state.finishKind === 'error' || state.finishKind === 'aborted') state.failure = reason.failure ?? null
-          break
-        }
-      }
-    } catch (cause) {
-      state.failure = cause
-    } finally {
-      settled = true
-      clearTimeout(timer)
-    }
-  })()
-
-  timer = setTimeout(abortNow, spec.timeoutMs)
-  let guardTimer = null
-  const guard = new Promise((resolve) => { guardTimer = setTimeout(resolve, spec.timeoutMs + HARD_GRACE_MS) })
-  await Promise.race([consume, guard])
-  clearTimeout(guardTimer)
-  clearTimeout(timer)
-  if (!settled) abortNow()
-
-  const failure = state.failure
-  const usage = readUsage(state.usage)
-  const error = failure === null ? { message: '', code: '', status: null } : {
-    message: messageOf(failure),
-    ...errorFields(failure),
-  }
-  return {
-    attempted: true,
-    ok: !state.timedOut && failure === null && state.finishKind !== 'error' && state.finishKind !== 'aborted' && state.finishKind !== null,
-    timedOut: state.timedOut,
-    finishKind: state.finishKind,
-    outputTokens: usage?.outputTokens ?? null,
-    usage,
-    toolCall: state.toolCall,
-    text: state.text.trim(),
-    message: state.timedOut ? `超过 ${spec.timeoutMs}ms 未返回` : error.message,
-    code: error.code,
-    httpStatus: error.status,
-    elapsedMs: Date.now() - startedAt,
-  }
-}
-
-const RED_PROBE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFWEXHbQSACj/P8Fu7N9hAAAAAElFTkSuQmCC'
-let redProbeImagePromise = null
-
-async function getRedProbeImage(attachments) {
-  if (attachments === null || attachments === undefined || typeof attachments.saveImage !== 'function') {
-    throw new Error('attachments 图片服务不可用')
-  }
-  if (redProbeImagePromise === null) {
-    redProbeImagePromise = Promise.resolve().then(() => attachments.saveImage({
-      data: Uint8Array.from(Buffer.from(RED_PROBE_PNG, 'base64')),
-      mediaType: 'image/png',
-      name: 'model-test-red-probe.png',
-    })).catch((cause) => {
-      redProbeImagePromise = null
-      throw cause
-    })
-  }
-  return redProbeImagePromise
-}
-
-function capabilityCheck(id, label, verdict, evidence, result = null) {
-  return {
-    id,
-    label,
-    verdict,
-    evidence,
-    detail: result?.message || '',
-    elapsedMs: result?.elapsedMs ?? null,
-    finishKind: result?.finishKind ?? null,
-    outputTokens: result?.outputTokens ?? null,
   }
 }
 
@@ -942,131 +816,6 @@ export function apply(ctx) {
     }
   })
 
-  registerRoute(ctx, '/api/model-test/probe', ['POST'], async (request) => {
-    try {
-      const llm = ctx.get('llm')
-      if (llm === null || llm === undefined || typeof llm.stream !== 'function') {
-        return json({ ok: false, code: 'model-test/llm-unavailable', message: 'llm 服务不可用，无法探测模型能力' }, 503)
-      }
-      const body = await readBody(request)
-      const provider = typeof body.provider === 'string' ? body.provider.trim() : ''
-      const model = typeof body.model === 'string' ? body.model.trim() : ''
-      if (provider === '' || model === '') {
-        return json({ ok: false, code: 'model-test/probe-target-required', message: '请指定 provider 和 model' }, 400)
-      }
-      const catalog = await buildCatalog(llm)
-      const targets = resolveTargets({ provider, model }, catalog)
-      if (targets.length === 0) {
-        return json({ ok: false, code: 'model-test/no-target', message: '没有匹配到指定模型', catalog }, 400)
-      }
-      const target = targets[0]
-      const timeoutMs = clampInt(body.timeoutMs, 20000, 1000, 60000)
-      const live = await readLiveCapability(llm, provider, model)
-      const preset = matchPreset(model, loadPresetLibrary())
-      const presetLevels = Array.isArray(preset?.reasoning?.levels) ? preset.reasoning.levels : []
-      const liveLevels = Array.isArray(live?.efforts) ? live.efforts : []
-      const checks = []
-      let calls = 0
-
-      const maxCall = await runCapabilityCall(llm, target, {
-        prompt: '请从 1 开始逐个输出自然数，至少写到 100，每个数字用空格分隔，只输出数字。',
-        maxTokens: 16,
-        timeoutMs,
-      })
-      calls += 1
-      if (maxCall.ok && maxCall.finishKind === 'max-tokens') {
-        checks.push(capabilityCheck('maxTokens', '输出上限', 'supported', '设置 maxTokens=16 后，适配器以 max-tokens 结束；该输出上限在此请求中生效。', maxCall))
-      } else if (maxCall.ok && maxCall.outputTokens !== null && maxCall.outputTokens > 24) {
-        checks.push(capabilityCheck('maxTokens', '输出上限', 'unsupported', `请求上限为 16，但实际输出 ${maxCall.outputTokens} tokens 且未以 max-tokens 结束，疑似网关未遵守上限。`, maxCall))
-      } else if (!maxCall.ok && isExplicitlyUnsupported(maxCall, ['max_tokens', 'max_output_tokens', 'token limit', '输出上限'])) {
-        checks.push(capabilityCheck('maxTokens', '输出上限', 'unsupported', '网关明确拒绝了输出上限参数。', maxCall))
-      } else {
-        checks.push(capabilityCheck('maxTokens', '输出上限', 'unknown', maxCall.ok
-          ? '这次请求没有触发 max-tokens 截断，无法判断网关是否遵守上限。'
-          : '请求失败或超时，不能据此判断输出上限能力。', maxCall))
-      }
-
-      const toolCall = await runCapabilityCall(llm, target, {
-        prompt: '必须调用 probe_capability 工具，并把 marker 设为 MODEL_TEST_PROBE；不要用普通文本回答。',
-        maxTokens: 32,
-        timeoutMs,
-        tools: [{
-          name: 'probe_capability',
-          description: 'Return a marker to confirm tool calling.',
-          parameters: {
-            type: 'object',
-            properties: { marker: { type: 'string' } },
-            required: ['marker'],
-            additionalProperties: false,
-          },
-        }],
-      })
-      calls += 1
-      if (toolCall.ok && (toolCall.toolCall || toolCall.finishKind === 'tool-calls')) {
-        checks.push(capabilityCheck('tools', '工具调用', 'supported', '模型返回了 tool-call 分片，确认此请求链路能发起工具调用。', toolCall))
-      } else if (!toolCall.ok && isExplicitlyUnsupported(toolCall, ['tool', 'function', '工具'])) {
-        checks.push(capabilityCheck('tools', '工具调用', 'unsupported', '适配器或网关明确拒绝了工具调用。', toolCall))
-      } else {
-        checks.push(capabilityCheck('tools', '工具调用', 'unknown', toolCall.ok
-          ? '请求完成但没有返回工具调用；模型可能选择了普通回答，不能据此判为不支持。'
-          : '请求失败或超时，不能据此判断工具调用能力。', toolCall))
-      }
-
-      let attachments = null
-      try { attachments = ctx.get('attachments') } catch {}
-      if (attachments === null || attachments === undefined || typeof attachments.saveImage !== 'function') {
-        checks.push(capabilityCheck('vision', '图片输入', 'unknown', 'Host 未提供 attachments 图片服务，本次没有发送图片。'))
-      } else {
-        try {
-          const image = await getRedProbeImage(attachments)
-          const visionCall = await runCapabilityCall(llm, target, {
-            content: [
-              { type: 'text', text: '图像中心是什么颜色？只回答 RED 或 OTHER。' },
-              { type: 'image', attachment: image },
-            ],
-            maxTokens: 16,
-            timeoutMs,
-          })
-          calls += 1
-          if (visionCall.ok && /\bRED\b/i.test(visionCall.text)) {
-            checks.push(capabilityCheck('vision', '图片输入', 'supported', '模型根据测试图片回答 RED，确认本次链路实际处理了图片内容。', visionCall))
-          } else if (!visionCall.ok && isExplicitlyUnsupported(visionCall, ['image', 'vision', '图片', '图像'])) {
-            checks.push(capabilityCheck('vision', '图片输入', 'unsupported', '适配器或网关明确拒绝了图片输入。', visionCall))
-          } else if (visionCall.ok && /无法.*(看|识别|读取|处理).*(图|图片|图像)|不支持.*(图|图片|图像)|cannot (see|read|process).*(image|picture)|image.*not supported/i.test(visionCall.text)) {
-            checks.push(capabilityCheck('vision', '图片输入', 'unsupported', '模型明确表示无法处理图片。', visionCall))
-          } else {
-            checks.push(capabilityCheck('vision', '图片输入', 'unknown', visionCall.ok
-              ? '请求完成，但没有可靠识别出测试图的纯红色内容。'
-              : '图片请求失败或超时，不能确定是图片能力还是其他网关错误。', visionCall))
-          }
-        } catch (cause) {
-          checks.push(capabilityCheck('vision', '图片输入', 'unknown', `测试图片准备失败，本次没有发送图片：${messageOf(cause)}`))
-        }
-      }
-
-      checks.push(capabilityCheck('reasoningEffort', '思考档位', 'unknown',
-        '网关可能静默忽略或映射档位；同一档位的重复请求出现过不同 usage 指纹，因此不把单次成功当作支持证明。'))
-      checks.push(capabilityCheck('temperature', 'temperature', 'unknown',
-        '多次采样结果在不同网关间方向不一致，不能可靠判断该参数是否生效。'))
-
-      return json({
-        ok: true,
-        generatedAt: Date.now(),
-        provider,
-        model,
-        calls,
-        maxCalls: 3,
-        timeoutMs,
-        declaredEfforts: liveLevels,
-        presetEfforts: presetLevels,
-        checks,
-        note: '这是按需真实请求，会产生上游调用费用。明确拒绝才判不支持；单次成功不证明参数生效。',
-      })
-    } catch (cause) {
-      return json({ ok: false, code: 'model-test/probe-failed', message: messageOf(cause) }, 500)
-    }
-  })
-
   registerRoute(ctx, '/api/model-test/run', ['POST'], async (request) => {
     try {
       const llm = ctx.get('llm')
@@ -1105,7 +854,7 @@ export function apply(ctx) {
         return { target, params: planParams(target, options, library, overrides, live) }
       })
       const results = await mapLimit(planned, options.concurrency, (item) =>
-        probeModel(llm, item.target, { ...options, params: item.params }))
+        measureModel(llm, item.target, { ...options, params: item.params }))
       const finishedAt = Date.now()
       const ok = results.filter((item) => item.ok === true).length
       const speeds = results.map((item) => item.tokensPerSecond).filter((value) => typeof value === 'number' && Number.isFinite(value) && value > 0)

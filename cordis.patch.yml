@@ -156,7 +156,7 @@
 #
 - insert:
     - id: dsh-toolkit
-      name: './live-entry-66.js'
+      name: './live-entry-67.js'
 
 # live-entry-66.js：数据落点重构 + 设置分页。
 #   66 去掉 image-gen/migrate.js（不再自动迁移老数据），数据按组件分目录
@@ -165,5 +165,8 @@
 #   并新增 toolkit 组件（设置分页，GET /api/toolkit/settings，只读）。
 #   版本：image-gen ?v=44 / token-usage ?v=29 / model-test ?v=12 /
 #         notifications ?v=10 / mcp ?v=2 / skill ?v=2 / toolkit ?v=1。
+#   67 删除模型测试的「探针」（POST /api/model-test/probe + 面板按钮）：参数直接读适配器声明，
+#   探针只能验证「声明是否生效」，3 次真实调用的成本换不来等价结论。
+#   版本：model-test ?v=13，其余同 66。
 
 # probe touch 20261021-144716

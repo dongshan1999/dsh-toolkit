@@ -2090,7 +2090,7 @@ return {
 // ─── 组件：model-test ───
 function modelTestClientFactory(require) {
     const React = require("react")
-const CSS = '.mt-root{position:relative;inset:auto;display:flex;flex-direction:column;gap:14px;padding:18px 20px 12px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;min-height:0;width:auto;background:var(--dsw-alias-bg-layer-0)}.mt-scroll{display:flex;flex-direction:column;gap:10px;padding-bottom:8px;flex:none}.mt-head,.mt-actions,.mt-stats,.mt-path,.mt-card{flex-shrink:0}.mt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.mt-title{margin:0;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}.mt-sub{margin-top:6px;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:640px}.mt-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mt-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;line-height:1.6;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.mt-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.mt-btn:disabled{opacity:.5;cursor:default}.mt-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:600}.mt-btn-primary:hover:not(:disabled){opacity:.9;background:var(--dsw-alias-brand-primary)}.mt-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;padding:12px 14px}.mt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mt-stat-label{font-size:11px;color:var(--dsw-alias-label-secondary)}.mt-stat-value{font-size:19px;font-weight:650;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;margin-top:3px}.mt-opt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-select{padding:3px 6px;font-size:12px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}.mt-group{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;overflow:hidden}.mt-group-head{display:flex;align-items:center;gap:10px;padding:10px 12px}.mt-caret{width:20px;height:20px;padding:0;font-size:11px;line-height:1;border-radius:5px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary)}.mt-group-name{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}.mt-group-id{font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family-mono,monospace)}.mt-count{margin-left:auto;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-models{border-top:1px solid var(--dsw-alias-border-l1)}.mt-model{display:flex;align-items:center;gap:10px;padding:8px 12px;min-width:0}.mt-model+.mt-model{border-top:1px solid var(--dsw-alias-border-l2)}.mt-model-main{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.mt-model-name{font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mt-model-id{font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family-mono,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mt-state{font-size:12px;font-variant-numeric:tabular-nums;text-align:right;color:var(--dsw-alias-label-secondary);flex:0 1 52%;max-width:52%;white-space:normal;overflow-wrap:anywhere;line-height:1.45}.mt-ok{color:var(--dsw-alias-state-success-primary)}.mt-bad{color:var(--dsw-alias-state-error-primary)}.mt-empty{padding:14px;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-msg{margin-top:2px;font-size:12px;line-height:1.5;word-break:break-all}.mt-msg-ok{color:var(--dsw-alias-state-success-primary)}.mt-msg-err{color:var(--dsw-alias-state-error-primary)}.mt-path{font-size:11px;color:var(--dsw-alias-label-tertiary)}.mt-entry-dot{display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:700;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2)}.mt-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--dsw-alias-label-tertiary)}.mt-dot-ok{background:var(--dsw-alias-state-success-primary)}.mt-dot-bad{background:var(--dsw-alias-state-error-primary)}.mt-row{display:flex;flex-direction:column;min-width:0}.mt-model-extra{display:flex;align-items:center;gap:6px;flex:0 0 auto}.mt-badge{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;font-size:10px;line-height:1.7;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}.mt-badge-synced{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}.mt-badge-mine{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mt-badge-muted{opacity:.7}.mt-params{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-top:1px dashed var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:1.6}.mt-params-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.mt-field{display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-input{width:76px;padding:3px 6px;font-size:12px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-sizing:border-box}.mt-meta{font-size:11px;color:var(--dsw-alias-label-tertiary);line-height:1.55;overflow-wrap:anywhere}.mt-code{margin:0;padding:8px 10px;font-size:11px;line-height:1.55;border-radius:6px;background:var(--dsw-alias-bg-layer-0);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family-mono,monospace);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}.mt-loading{opacity:.65}.mt-dsh{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}.mt-dsh-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.mt-dsh-title{font-size:11px;font-weight:600;color:var(--dsw-alias-label-primary)}.mt-dsh-tag{display:inline-flex;align-items:center;padding:0 6px;font-size:10px;line-height:1.7;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-dsh-tag-miss{color:var(--dsw-alias-state-warning-primary);border-color:var(--dsw-alias-state-warning-primary)}.mt-dsh-tag-same{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mt-dsh-tag-warn{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mt-dsh-row{display:grid;grid-template-columns:72px 1fr auto;align-items:baseline;gap:8px;font-size:11px;line-height:1.6}.mt-dsh-field{color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-dsh-val{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;font-family:var(--dsw-font-family-mono,monospace)}.mt-dsh-val-same{color:var(--dsw-alias-label-tertiary)}.mt-dsh-note{font-size:11px;line-height:1.55;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}.mt-dsh-warn{font-size:11px;line-height:1.55;color:var(--dsw-alias-state-warning-primary);overflow-wrap:anywhere}.mt-probe{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}.mt-probe-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mt-probe-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary)}.mt-probe-row{display:grid;grid-template-columns:88px 56px 1fr;gap:8px;font-size:11px;line-height:1.6}.mt-probe-label{color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-probe-tag{justify-self:start;padding:0 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);font-size:10px}.mt-probe-ok{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mt-probe-no{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mt-probe-unk{color:var(--dsw-alias-label-tertiary)}.mt-probe-ev{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}'
+const CSS = '.mt-root{position:relative;inset:auto;display:flex;flex-direction:column;gap:14px;padding:18px 20px 12px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;min-height:0;width:auto;background:var(--dsw-alias-bg-layer-0)}.mt-scroll{display:flex;flex-direction:column;gap:10px;padding-bottom:8px;flex:none}.mt-head,.mt-actions,.mt-stats,.mt-path,.mt-card{flex-shrink:0}.mt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.mt-title{margin:0;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}.mt-sub{margin-top:6px;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:640px}.mt-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mt-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;line-height:1.6;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.mt-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.mt-btn:disabled{opacity:.5;cursor:default}.mt-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:600}.mt-btn-primary:hover:not(:disabled){opacity:.9;background:var(--dsw-alias-brand-primary)}.mt-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;padding:12px 14px}.mt-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mt-stat-label{font-size:11px;color:var(--dsw-alias-label-secondary)}.mt-stat-value{font-size:19px;font-weight:650;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;margin-top:3px}.mt-opt{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-select{padding:3px 6px;font-size:12px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}.mt-group{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;overflow:hidden}.mt-group-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}.mt-group-head:hover{background:var(--dsw-alias-interactive-bg-hover)}.mt-caret{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:20px;height:20px;padding:0;font-size:11px;line-height:1;border-radius:5px;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary)}.mt-group-name{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}.mt-group-id{font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family-mono,monospace)}.mt-count{margin-left:auto;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-models{border-top:1px solid var(--dsw-alias-border-l1)}.mt-model{display:flex;align-items:center;gap:10px;padding:8px 12px;min-width:0}.mt-model+.mt-model{border-top:1px solid var(--dsw-alias-border-l2)}.mt-model-main{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.mt-model-name{font-size:13px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mt-model-id{font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:var(--dsw-font-family-mono,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mt-state{font-size:12px;font-variant-numeric:tabular-nums;text-align:right;color:var(--dsw-alias-label-secondary);flex:0 1 52%;max-width:52%;white-space:normal;overflow-wrap:anywhere;line-height:1.45}.mt-ok{color:var(--dsw-alias-state-success-primary)}.mt-bad{color:var(--dsw-alias-state-error-primary)}.mt-empty{padding:14px;font-size:12px;color:var(--dsw-alias-label-secondary)}.mt-msg{margin-top:2px;font-size:12px;line-height:1.5;word-break:break-all}.mt-msg-ok{color:var(--dsw-alias-state-success-primary)}.mt-msg-err{color:var(--dsw-alias-state-error-primary)}.mt-path{font-size:11px;color:var(--dsw-alias-label-tertiary)}.mt-entry-dot{display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:700;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2)}.mt-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--dsw-alias-label-tertiary)}.mt-dot-ok{background:var(--dsw-alias-state-success-primary)}.mt-dot-bad{background:var(--dsw-alias-state-error-primary)}.mt-row{display:flex;flex-direction:column;min-width:0}.mt-model-extra{display:flex;align-items:center;gap:6px;flex:0 0 auto}.mt-badge{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;font-size:10px;line-height:1.7;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}.mt-badge-synced{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}.mt-badge-mine{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mt-badge-muted{opacity:.7}.mt-params{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-top:1px dashed var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:1.6}.mt-params-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.mt-field{display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-input{width:76px;padding:3px 6px;font-size:12px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-sizing:border-box}.mt-meta{font-size:11px;color:var(--dsw-alias-label-tertiary);line-height:1.55;overflow-wrap:anywhere}.mt-code{margin:0;padding:8px 10px;font-size:11px;line-height:1.55;border-radius:6px;background:var(--dsw-alias-bg-layer-0);color:var(--dsw-alias-label-secondary);font-family:var(--dsw-font-family-mono,monospace);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}.mt-loading{opacity:.65}.mt-dsh{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}.mt-dsh-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.mt-dsh-title{font-size:11px;font-weight:600;color:var(--dsw-alias-label-primary)}.mt-dsh-tag{display:inline-flex;align-items:center;padding:0 6px;font-size:10px;line-height:1.7;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-dsh-tag-miss{color:var(--dsw-alias-state-warning-primary);border-color:var(--dsw-alias-state-warning-primary)}.mt-dsh-tag-same{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mt-dsh-tag-warn{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mt-dsh-row{display:grid;grid-template-columns:72px 1fr auto;align-items:baseline;gap:8px;font-size:11px;line-height:1.6}.mt-dsh-field{color:var(--dsw-alias-label-secondary);white-space:nowrap}.mt-dsh-val{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;font-family:var(--dsw-font-family-mono,monospace)}.mt-dsh-val-same{color:var(--dsw-alias-label-tertiary)}.mt-dsh-note{font-size:11px;line-height:1.55;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}.mt-dsh-warn{font-size:11px;line-height:1.55;color:var(--dsw-alias-state-warning-primary);overflow-wrap:anywhere}'
 const PANEL_KEY = 'model-test'
 const PENDING_LABEL = '测试中…'
 const UNTESTED_LABEL = '未测试'
@@ -2216,7 +2216,9 @@ return {
       const [results, setResults] = React.useState({})
       const [running, setRunning] = React.useState(false)
       const [pending, setPending] = React.useState([])
-      const [collapsed, setCollapsed] = React.useState([])
+      // 收纳状态存「展开过的组」而不是「收起的组」：目录动辄十几个组，默认全收，
+      // 只记住用户展开过哪些；点组头任意空白处即可切换。
+      const [expanded, setExpanded] = React.useState([])
       const [notice, setNotice] = React.useState(null)
       const [options, setOptions] = React.useState({ timeoutMs: 120000, maxTokens: 256, concurrency: 3 })
       const [prompt, setPrompt] = React.useState('请连续输出 80 个「测速」，词与词之间只用空格，不要解释。')
@@ -2235,8 +2237,6 @@ return {
       const [dshState, setDshState] = React.useState({})
       // 正在写 DSH 配置的目标键（null = 没有写入进行中）
       const [dshWriting, setDshWriting] = React.useState(null)
-      // 按模型缓存按需网关探针结果：{ 'provider\0model' -> {loading, data, error} }
-      const [probeState, setProbeState] = React.useState({})
       const seq = React.useRef(0)
       const rootRef = React.useRef(null)
 
@@ -2300,8 +2300,6 @@ return {
 
       const data = catalog.data
       const groups = data !== null && typeof data === 'object' && Array.isArray(data.groups) ? data.groups : []
-      // 组折叠是面板的主收纳手段（组多时一屏放不下）。这里给一个「一键全收」，因为逐组点太累。
-      const allCollapsed = groups.length > 0 && groups.every((group) => collapsed.includes(group.id))
       const failures = data !== null && typeof data === 'object' && Array.isArray(data.failures) ? data.failures : []
       const resultList = groups.flatMap((group) => group.models.map((item) => results[keyOf(group.id, item.id)]).filter((item) => item !== undefined && item !== null))
       const summary = summaryOf(resultList)
@@ -2341,7 +2339,7 @@ return {
           .finally(() => { if (seq.current === mine) setRunning(false) })
       }
 
-      const toggleGroup = (id) => setCollapsed(collapsed.includes(id) ? collapsed.filter((item) => item !== id) : collapsed.concat([id]))
+      const toggleGroup = (id) => setExpanded(expanded.includes(id) ? expanded.filter((item) => item !== id) : expanded.concat([id]))
       const setOption = (patch) => setOptions({ ...options, ...patch })
 
       // ── 参数覆盖的读写 ────────────────────────────────────────
@@ -2370,6 +2368,8 @@ return {
         if (editing === key) { setEditing(null); return }
         setEditing(key)
         setDraft(draftOf(overrideOf(overrides, provider, model)))
+        // 整组参数按钮在组头上，组可能正收着：不展开的话编辑器会落在收起区里。
+        if (model === null || model === undefined) setExpanded((current) => (current.includes(provider) ? current : current.concat([provider])))
         // 展开就顺手把 DSH 里的真实配置读回来：用户点「参数」是想看「现在是什么、差在哪」，
         // 不该再让他多点一次。整组编辑没有 DSH 区块，不读。
         if (model !== null && model !== undefined) {
@@ -2422,58 +2422,6 @@ return {
           })
           .catch((error) => setNotice({ kind: 'error', text: '写入 DSH 配置失败：' + String(error && error.message ? error.message : error) }))
           .finally(() => setDshWriting(null))
-      }
-
-      // ── 网关能力探针（按需触发，真实计费）──────────────────────────
-      // 只报三态：supported / unsupported / unknown。单次成功不证明参数生效；
-      // 只有网关明确拒绝才判 unsupported。effort / temperature 恒为 unknown ——
-      // 实测它们在这类聚合网关上是静默忽略或跨后端漂移，少量调用判不出来。
-      const runProbe = (provider, model) => {
-        const key = keyOf(provider, model)
-        setProbeState((prev) => ({ ...prev, [key]: { loading: true, data: null, error: null } }))
-        postJson('/api/model-test/probe', { provider, model })
-          .then((data) => setProbeState((prev) => ({ ...prev, [key]: { loading: false, data, error: null } })))
-          .catch((error) => setProbeState((prev) => ({
-            ...prev,
-            [key]: { loading: false, data: null, error: String(error && error.message ? error.message : error) },
-          })))
-      }
-      const PROBE_LABEL = { supported: '支持', unsupported: '不支持', unknown: '无法判定' }
-      const PROBE_CLASS = { supported: 'mt-probe-ok', unsupported: 'mt-probe-no', unknown: 'mt-probe-unk' }
-
-      const probeNode = (provider, model) => {
-        const key = keyOf(provider, model)
-        const state = probeState[key] !== undefined ? probeState[key] : null
-        if (state === null) return null
-        const head = React.createElement('div', { className: 'mt-probe-head' },
-          React.createElement('span', { className: 'mt-probe-title' }, '网关能力探针'),
-          state.data !== null && typeof state.data.calls === 'number'
-            ? React.createElement('span', { className: 'mt-dsh-tag' }, state.data.calls + ' 次真实调用')
-            : null,
-          React.createElement('button', {
-            className: 'mt-btn',
-            disabled: state.loading === true,
-            title: '重新探测这个模型的网关能力',
-            onClick: () => runProbe(provider, model),
-          }, state.loading === true ? '探测中…' : '重新探测'))
-        if (state.loading === true) {
-          return React.createElement('div', { className: 'mt-probe' }, head,
-            React.createElement('div', { className: 'mt-dsh-note' }, '正在发真实请求探测（会产生上游调用费用）…'))
-        }
-        if (state.error !== null) {
-          return React.createElement('div', { className: 'mt-probe' }, head,
-            React.createElement('div', { className: 'mt-msg mt-msg-err' }, '探测失败：' + state.error))
-        }
-        const checks = state.data !== null && Array.isArray(state.data.checks) ? state.data.checks : []
-        return React.createElement('div', { className: 'mt-probe' }, head,
-          checks.map((check) => React.createElement('div', { className: 'mt-probe-row', key: check.id },
-            React.createElement('span', { className: 'mt-probe-label' }, check.label),
-            React.createElement('span', { className: 'mt-probe-tag ' + (PROBE_CLASS[check.verdict] || 'mt-probe-unk') },
-              PROBE_LABEL[check.verdict] || check.verdict),
-            React.createElement('span', { className: 'mt-probe-ev' },
-              check.evidence + (check.detail !== '' && check.detail !== null ? '（' + check.detail + '）' : '')))),
-          React.createElement('div', { className: 'mt-dsh-note' },
-            state.data !== null && state.data.note !== undefined ? String(state.data.note) : ''))
       }
 
       const optionNode = (label, node) => React.createElement('label', { className: 'mt-opt' }, label, node)
@@ -2692,28 +2640,31 @@ return {
             }, isEditing ? '收起' : '参数'),
             React.createElement('button', {
               className: 'mt-btn',
-              title: '探测这个模型的网关能力（真实调用，约 3 次）',
-              disabled: running,
-              onClick: () => runProbe(group.id, model.id),
-            }, probeState[key] !== undefined && probeState[key].loading === true ? '探测中…' : '探针'),
-            React.createElement('button', {
-              className: 'mt-btn',
               disabled: running,
               onClick: () => run({ provider: group.id, model: model.id }, [key]),
             }, isPending ? PENDING_LABEL : '测试')),
-          isEditing ? paramsEditor(group.id, model) : null,
-          probeNode(group.id, model.id))
+          isEditing ? paramsEditor(group.id, model) : null)
       }
 
       const groupNode = (group) => {
-        const isCollapsed = collapsed.includes(group.id)
+        const isCollapsed = !expanded.includes(group.id)
         const groupKeys = group.models.map((item) => keyOf(group.id, item.id))
         const groupOverride = overrideOf(overrides, group.id, null)
         const groupKey = group.id + '\u0000*'
         const editingGroup = editing === groupKey
+        const onHeadClick = (event) => {
+          const el = event.target
+          // 组头里的按钮/输入框各有动作，只有点空白、组名、计数这类区域才算「收起/展开」。
+          if (el !== null && typeof el.closest === 'function' && el.closest('button, input, select, textarea, a, label') !== null) return
+          toggleGroup(group.id)
+        }
         return React.createElement('div', { className: 'mt-group', key: group.id },
-          React.createElement('div', { className: 'mt-group-head' },
-            React.createElement('button', { className: 'mt-caret', title: isCollapsed ? '展开' : '收起', onClick: () => toggleGroup(group.id) }, isCollapsed ? '▸' : '▾'),
+          React.createElement('div', {
+            className: 'mt-group-head',
+            onClick: onHeadClick,
+            title: isCollapsed ? '点击展开这一组' : '点击收起这一组',
+          },
+            React.createElement('span', { className: 'mt-caret' }, isCollapsed ? '▸' : '▾'),
             React.createElement('span', { className: 'mt-group-name' }, group.name),
             group.name === group.id ? null : React.createElement('span', { className: 'mt-group-id' }, group.id),
             React.createElement('span', { className: 'mt-count' }, group.models.length + ' 个模型'),
@@ -2729,7 +2680,11 @@ return {
             React.createElement('button', {
               className: 'mt-btn',
               disabled: running || group.models.length === 0,
-              onClick: () => run({ provider: group.id }, groupKeys),
+              title: '测试这一组的全部模型（会先展开这一组，方便看结果）',
+              onClick: () => {
+                setExpanded((current) => (current.includes(group.id) ? current : current.concat([group.id])))
+                run({ provider: group.id }, groupKeys)
+              },
             }, '测试本组')),
           editingGroup ? React.createElement('div', { className: 'mt-models' }, paramsEditor(group.id, null)) : null,
           isCollapsed ? null : React.createElement('div', { className: 'mt-models' },
@@ -2755,12 +2710,6 @@ return {
               title: '按当前目录里的模型，从 models.dev 拉一份参数预设（写进本地 presets.json）',
               onClick: syncPresets,
             }, '同步参数预设'),
-            React.createElement('button', {
-              className: 'mt-btn',
-              disabled: groups.length === 0,
-              title: allCollapsed ? '展开所有模型组' : '把每个模型组收起来，只留组名和按钮',
-              onClick: () => setCollapsed(allCollapsed ? [] : groups.map((group) => group.id)),
-            }, allCollapsed ? '展开全部' : '收起全部'),
             React.createElement('button', { className: 'mt-btn', disabled: running, onClick: loadCatalog }, '刷新目录'))),
         React.createElement('div', { className: 'mt-actions' },
           optionNode('超时', React.createElement('select', {

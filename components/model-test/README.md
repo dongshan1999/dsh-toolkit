@@ -45,14 +45,14 @@
   `超时`（15/30/60/120/180 秒）、`输出上限`（16/64/256/512 tokens）、
   `并发`（1/2/3/5/8）、`默认 temperature`、`默认档位`、`提示词`。
 - **每个模型行**：状态点 + 模型名/ID + 实时读数 + 右侧 `测试` 按钮 → **单个组下单个模型**。
-- **每个组头**：折叠开关 + 组名 + `N 个模型` + `整组参数` + `测试本组` → **整组**。
+- **每个组头**：整行是折叠热区（`▸/▾` + 组名 + `N 个模型`）+ `整组参数` + `测试本组` → **整组**。
 - **每个模型行**：模型名后跟一行参数徽标 ——
   `预设族名`（命中内置表/modes.dev）+ `已配置`（有手工覆盖）+
   生效参数摘要（`t=0.6 · max=64 · 中`，优先显示上次测试**真实发出**的值）。
   右侧 `参数` 按钮展开编辑区。
 - 有结果时顶部出现汇总卡：`成功 x / y`、`平均首字`、`平均速度`、`最快 / 最慢`。
 - 单测某个模型时**合并**而非覆盖已有读数，其它模型上一次的结果仍留在表里。
-- 组默认全部展开；多组时点组头可折叠。
+- 组默认全部收起（只显示组名与模型数）；点组头任意空白处展开，再点收起。
 
 每行读数形如：
 
@@ -80,6 +80,16 @@ DSH 的 `ctx.llm.stream()` 只认三个可调参数：`temperature`、`maxTokens
 | 5 | **全局默认** | 面板顶部的「默认 temperature / 默认档位」 |
 
 每个字段**独立**取值：比如手工只配了 `temperature`，`reasoningEffort` 仍会从预设取。
+
+**真实能力看「参数」抽屉，不看预设。** 点模型行的 `参数`，`DSH 现在：…` 那一段来自适配器的
+`llm.resolveModelInfo(provider, model)`：`context.contextWindow`、`defaultMaxTokens`、
+`reasoning.efforts` / `defaultEffort`、`inputModalities` 都是 DSH 解析出来的真实声明值，
+并用它给参数做安全阀（不支持的档位自动降级）。模型行上那个 `t=0.7 · max=256 · 最高（预设）`
+是 models.dev 预设 + 你的覆盖，属于**建议值**，两者不一致时以适配器声明为准。
+
+`contextWindow` / 输出上限这类值没有可问的接口（网关不提供），只能读适配器声明；
+`temperature`、`reasoningEffort` 是否真的生效在接口层也不可判定——聚合网关会静默忽略未知参数。
+所以本面板不做「参数是否生效」的探测，只把声明值如实展示出来。
 
 ### 内置精选表
 
@@ -171,27 +181,6 @@ contextWindow / maxTokens / suggest{temperature,maxTokens,reasoningEffort} / not
 | `POST /api/model-test/inspect` | 单模型画像：`{ provider, model }` → `{ preset, live, overrides, params, snippet, thinkingLevels }` |
 | `GET /api/model-test/dsh?provider=P&model=M` | 读 **DSH 真实配置**里该模型的字段（`current`）+ 预设建议（`proposed`）+ 逐字段 `diff` + 写入计划 `plan`；`available/reason` 说明这个 provider 能不能写 |
 | `POST /api/model-test/dsh` | 把字段写进 DSH 配置：`{ provider, model, mode: 'fill' \| 'replace', revision? }`。`fill` 只补缺失字段，`replace` 用建议值覆盖差异字段 |
-| `POST /api/model-test/probe` | 按需探测单个模型的网关能力：`{ provider, model, timeoutMs? }` → `{ calls, checks: [{ id, label, verdict, evidence }] }`，`verdict` 只有 `supported` / `unsupported` / `unknown` |
-
-
-## 网关能力探针（按模型点一次）
-
-点模型行上的「探针」会真的发 3 次请求（**真实计费**），只回答「这个模型在这条链路上能不能做这几件事」：
-
-| 探针项 | 判定依据 |
-| --- | --- |
-| 输出上限 `maxTokens` | 设 `maxTokens=16`；以 `max-tokens` 结束 → 支持；没截断却输出远超 16 tokens → 不支持 |
-| 工具调用 `tools` | 声明一个 `probe_capability` 工具；返回 `tool-call` 分片或 `tool-calls` 结束 → 支持 |
-| 图片输入 vision | 用 `attachments.saveImage` 存一张 8×8 纯红 PNG 发给模型；答出 `RED` → 支持 |
-| 思考档位 `reasoningEffort` | **恒为「无法判定」** |
-| `temperature` | **恒为「无法判定」** |
-
-后两项刻意不做行为推断：这类聚合网关会静默忽略未知参数，同一档位重复请求的 `input_tokens`
-/ `reasoning_tokens` 指纹还会跨后端漂移，少量调用判不出真假。只有网关**明确拒绝**（错误码或
-文案点名该参数）才判「不支持」；单次成功一律不写成「支持」，只记「未观察到拒绝」。
-
-这条路径与「测试」共用 `ctx.llm.stream`，不绕开 DSH 的凭证与协议转换；`temperature` / 真实
-`contextWindow` / `maxTokens` 上限在本类网关上**探测不出来**，只能靠 models.dev 的预设表。
 
 
 > `GET` 与 `POST` 共用 `/api/model-test/config` 一条 route（按 `request.method` 分流）：
@@ -260,8 +249,12 @@ Loader 热重载、失败自动回滚；写后立刻回读，`before / after` �
 
 ### 模型组收纳
 
-组头 `▾/▸` 折叠单个组；顶部 `收起全部 / 展开全部` 一键收纳（按钮文案随状态切换）。
-折叠只影响渲染，不影响「测试本组」——收起的组照样能整组测。
+组默认全部收起：首屏只看到每组一行（箭头 + 组名 + `N 个模型`），点组头任意空白处展开这一组，
+再点一次收起。没有全局「收起全部 / 展开全部」按钮——收纳统一走组头。
+
+- 组头里的按钮（`整组参数` / `测试本组`）有自己的动作，点在它们上面不会切换展开状态。
+- 收起状态下点 `测试本组` 会先把这一组展开再跑，结果不会藏在收起区里。
+- 折叠只影响渲染，不影响「测试本组」——收起的组照样能整组测。
 
 ## 为什么只列 `listProviders()` 而不列 `listConfigurableProviders()`
 

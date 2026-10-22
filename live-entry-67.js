@@ -1,14 +1,15 @@
-// live-entry-66.js：数据落点重构后的入口。
-// 承接 65（65 已是可加载状态，这里不改 65，避免影响并行工作区）。
-// 66 的改动：
-//   1) 删除 image-gen/migrate.js 及其调用 —— 不再做老位置自动迁移（存档容错一律去掉）。
-//   2) 数据目录改为按组件划分：$DSH_HOME/dsh-toolkit/{image-gen,token-usage,model-test,notifications}/…
-//      （见 components/image-gen/paths.js 与 README 的数据目录一节）。
-//   3) 收藏不再复制文件：图片全部留在 image-gen/images/，收藏改为 image-gen/favorites.json 索引。
-//   4) 新增 toolkit 组件（设置分页）：GET /api/toolkit/settings 汇总各组件的数据落点，只读。
-// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=12、notifications ?v=10、
+// live-entry-67.js：去掉模型测试「探针」后的入口。
+// 承接 66（66 是数据落点重构后的版本，这里不改 66，避免影响并行工作区）。
+// 67 的改动：
+//   1) 删除 POST /api/model-test/probe 路由与其四个辅助函数（runCapabilityCall /
+//      getRedProbeImage / capabilityCheck / isExplicitlyUnsupported）。
+//   2) 模型测试面板去掉「探针」按钮和探针结果卡片：真实参数本来就在「参数 → DSH 配置」里读
+//      适配器声明（resolveModelInfo），探针只能验证「声明是否生效」，成本与结论都不划算。
+//   3) model-test/host.js 内部 probeModel 改名为 measureModel（它其实是测速的单次调用，
+//      与已删除的「能力探针」无关，避免再被误读）。
+// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=13、notifications ?v=10、
 //       mcp ?v=2、skill ?v=2、toolkit ?v=1。
-// 自检：`node -e "import('./live-entry-66.js')"` 应输出 ok 且 inject 里含 'timer'。
+// 自检：`node -e "import('./live-entry-67.js')"` 应输出 ok 且 inject 里含 'timer'。
 import { inject as imageGenInject, apply as imageGenApply } from './components/image-gen/host.js?v=44'
 import { inject as imageGenGalleryInject, apply as imageGenGalleryApply } from './components/image-gen/gallery-page.js?v=44'
 import { inject as imageGenActionsInject, apply as imageGenActionsApply } from './components/image-gen/gallery-actions.js?v=44'
@@ -18,7 +19,7 @@ import { inject as imageGenGenerateInject, apply as imageGenGenerateApply } from
 import { inject as imageGenLibraryInject, apply as imageGenLibraryApply } from './components/image-gen/library-routes.js?v=44'
 import { inject as tokenUsageInject, apply as tokenUsageApply } from './components/token-usage/host.js?v=29'
 import { inject as tokenActivityInject, apply as tokenActivityApply } from './components/token-usage/activity.js?v=29'
-import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=12'
+import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=13'
 import { inject as notificationsInject, apply as notificationsApply } from './components/notifications/host.js?v=10'
 import { inject as mcpInject, apply as mcpApply } from './components/mcp/host.js?v=2'
 import { inject as skillInject, apply as skillApply } from './components/skill/host.js?v=2'

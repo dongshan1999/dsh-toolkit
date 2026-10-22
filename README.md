@@ -96,6 +96,7 @@ DSH **0.1.7+**，并有一个 Web profile（默认位于 `~/.dsh/profiles/<profi
 目录来自 DSH 自己的模型路由（不引入任何第二套凭证）。可整批、整组或只测单个模型，
 看首字延迟 / 总耗时 / 每秒 token；能按模型名自动补 `temperature / maxTokens / reasoningEffort`，
 并可一键把参数写进 DSH 真实配置（`fill` 或 `replace`，带 revision CAS）。
+组默认收起，点组头（组名 / 箭头 / 空白处）展开；点「测试本组」会自动展开该组。
 
 契约：[功能案-模型测试](./docs/功能案-模型测试.md) · 实现：[components/model-test/README.md](./components/model-test/README.md)
 

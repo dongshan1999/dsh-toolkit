@@ -103,6 +103,8 @@ Contract: [功能案-token用量](./docs/功能案-token用量.md) · implementa
 The catalog comes from DSH's own routing (no second set of credentials). Test everything, one group, or a single model, and
 read first-token latency / total time / tokens per second; parameters (`temperature / maxTokens / reasoningEffort`) are filled
 in from the model name, and can be written into the real DSH config (`fill` or `replace`, with revision CAS).
+Groups start collapsed — click a group header (name / arrow / empty space) to expand it, and "Test this group"
+expands the group first.
 
 Contract: [功能案-模型测试](./docs/功能案-模型测试.md) · implementation:
 [components/model-test/README.md](./components/model-test/README.md)
