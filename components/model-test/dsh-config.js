@@ -247,6 +247,15 @@ export function proposeFields(input) {
   return fields
 }
 
+/** reasoningEfforts 里剔除 off：它只是「关闭思考」的档位名，不是需要同步进配置的思考档位。 */
+function withoutOffLevel(value) {
+  if (!isPlainObject(value)) return value
+  if (value.off === undefined) return value
+  const out = { ...value }
+  delete out.off
+  return out
+}
+
 /** 把建议值和现有条目对比，产出逐字段差异。 */
 export function diffFields(entry, proposed) {
   const existing = pickWritable(entry)
@@ -254,8 +263,14 @@ export function diffFields(entry, proposed) {
   const keys = new Set([...Object.keys(existing), ...Object.keys(proposed)])
   for (const field of WRITABLE_FIELDS) {
     if (!keys.has(field)) continue
-    const before = existing[field]
-    const after = proposed[field]
+    let before = existing[field]
+    let after = proposed[field]
+    // 现有配置里多写一个 off（off: none 之类）不算差异：建议值本来就不写 off，
+    // 两边都去掉 off 再比，才不会给每个带 off 的模型挂一条假差异。
+    if (field === 'reasoningEfforts') {
+      before = withoutOffLevel(before)
+      after = withoutOffLevel(after)
+    }
     // compat 是「开关集合」，而且里面常常混着用户手写的开关（chatTemplateKwargs 之类，
     // 甚至有些是适配器从 catalog 合并进来的）。所以：
     //   1. 只比较**我们建议里出现的键**，用户自己的开关一律不碰、也不报差异；

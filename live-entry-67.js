@@ -7,7 +7,8 @@
 //      适配器声明（resolveModelInfo），探针只能验证「声明是否生效」，成本与结论都不划算。
 //   3) model-test/host.js 内部 probeModel 改名为 measureModel（它其实是测速的单次调用，
 //      与已删除的「能力探针」无关，避免再被误读）。
-// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=13、notifications ?v=10、
+// 67.1：模型行头去掉参数/预设徽章（信息移进「参数」抽屉）；diff 忽略 off 档位。
+// 版本：image-gen ?v=44、token-usage ?v=29、model-test ?v=14（dsh-config ?v=13）、notifications ?v=10、
 //       mcp ?v=2、skill ?v=2、toolkit ?v=1。
 // 自检：`node -e "import('./live-entry-67.js')"` 应输出 ok 且 inject 里含 'timer'。
 import { inject as imageGenInject, apply as imageGenApply } from './components/image-gen/host.js?v=44'
@@ -19,7 +20,7 @@ import { inject as imageGenGenerateInject, apply as imageGenGenerateApply } from
 import { inject as imageGenLibraryInject, apply as imageGenLibraryApply } from './components/image-gen/library-routes.js?v=44'
 import { inject as tokenUsageInject, apply as tokenUsageApply } from './components/token-usage/host.js?v=29'
 import { inject as tokenActivityInject, apply as tokenActivityApply } from './components/token-usage/activity.js?v=29'
-import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=13'
+import { inject as modelTestInject, apply as modelTestApply } from './components/model-test/host.js?v=14'
 import { inject as notificationsInject, apply as notificationsApply } from './components/notifications/host.js?v=10'
 import { inject as mcpInject, apply as mcpApply } from './components/mcp/host.js?v=2'
 import { inject as skillInject, apply as skillApply } from './components/skill/host.js?v=2'

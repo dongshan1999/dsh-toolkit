@@ -2467,6 +2467,22 @@ try {
       'model-test 不再注册探针路由，探测辅助函数已删除')
     const mtClientSource = await fs.readFile(path.join(ROOT, 'components', 'model-test', 'client.js'), 'utf8')
     check(!/mt-probe|runProbe|探针/.test(mtClientSource), 'model-test 面板不再有「探针」按钮与结果卡片')
+
+    // 行头只留名字/状态/按钮：参数摘要与预设来源收进「参数」抽屉。
+    check(!/mt-model-extra|effectiveOf|badgesOf/.test(mtClientSource),
+      'model-test 行头不再渲染参数摘要/预设来源徽章')
+    check(/预设：/.test(mtClientSource), '参数抽屉里显示「预设：… 建议 …」一行')
+
+    // off 只是「关闭思考」的档位名，配置里多一个 off 不该报成差异。
+    const dshConfigModule = await import(pathToFileURL(path.join(ROOT, 'components', 'model-test', 'dsh-config.js')).href)
+    const offRow = dshConfigModule.diffFields(
+      { reasoningEfforts: { off: 'none', low: 'low' } }, { reasoningEfforts: { low: 'low' } })
+      .find((row) => row.field === 'reasoningEfforts')
+    check(offRow !== undefined && offRow.changed === false, '配置里多一个 off 档位不算差异')
+    const realDiff = dshConfigModule.diffFields(
+      { reasoningEfforts: { off: 'none', low: 'low' } }, { reasoningEfforts: { low: 'low', high: 'high' } })
+      .find((row) => row.field === 'reasoningEfforts')
+    check(realDiff !== undefined && realDiff.changed === true, '档位真的不同（多了 high）仍然报差异')
   }
 } catch (e) {
   fail('model-test host 冒烟异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
