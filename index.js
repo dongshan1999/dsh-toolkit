@@ -20,6 +20,7 @@ import { inject as notificationsInject, apply as notificationsApply } from './co
 import { inject as mcpInject, apply as mcpApply } from './components/mcp/host.js'
 import { inject as skillInject, apply as skillApply } from './components/skill/host.js'
 import { inject as clipboardInject, apply as clipboardApply } from './components/clipboard/host.js'
+import { inject as annotationsInject, apply as annotationsApply } from './components/annotations/host.js'
 import { inject as toolkitInject, apply as toolkitApply } from './components/toolkit/host.js'
 
 export const name = 'dsh-toolkit'
@@ -39,6 +40,7 @@ const parts = [
   { id: 'mcp', inject: mcpInject, apply: mcpApply },
   { id: 'skill', inject: skillInject, apply: skillApply },
   { id: 'clipboard', inject: clipboardInject, apply: clipboardApply },
+  { id: 'annotations', inject: annotationsInject, apply: annotationsApply },
   { id: 'toolkit', inject: toolkitInject, apply: toolkitApply },
 ]
 

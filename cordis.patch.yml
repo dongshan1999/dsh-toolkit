@@ -156,7 +156,7 @@
 #
 - insert:
     - id: dsh-toolkit
-      name: './live-entry-70.js'
+      name: './live-entry-76.js'
 
 # live-entry-66.js：数据落点重构 + 设置分页。
 #   66 去掉 image-gen/migrate.js（不再自动迁移老数据），数据按组件分目录
@@ -190,3 +190,37 @@
 #   配置 cleanupEnabled / cleanupMaxAgeDays / cleanupMaxTotalBytes 落在 clipboard/config.json，
 #   只处理 <根>/<YYYY-MM-DD>/ 里的文件，索引里指向别处的路径一律跳过。
 #   版本：clipboard ?v=3、toolkit ?v=3（设置分页的 clipboard 块引用 paths ?v=3），其余同 69。
+
+# live-entry-71.js：系统通知标题带图标。
+#   Host 在每条通知上给 icon（✅ 成功 / 🔶 待审批 / ❓ 待回答 / ❌ 失败 / ⚠️ 警告 / 🔔 兜底），
+#   前端把标题拼成「图标 + 工作区 / 会话」；macOS 通知中心不能自定义颜色，只能靠图标区分四类。
+#   面板沿用同一套语义的色调（左侧圆点 + 彩色标签），两边对应同一套分类。
+#   版本：notifications ?v=11、toolkit ?v=4，其余同 70。
+
+# live-entry-72.js：系统通知改用一组纯色圆点（🟢 成功 / 🟠 待审批 / 🔵 待回答 / 🔴 失败 / 🟡 警告 / ⚪ 兜底）。
+# live-entry-73.js：通知更快更少打扰（1.5 秒轻量心跳 / 同会话一分钟合并 / 正在看的会话静默）。
+#   同形状同尺寸，靠颜色区分类别；面板场景目录里显示同一组圆点当图例。
+#   版本：notifications ?v=12、toolkit ?v=5，其余同 71。
+
+# live-entry-74.js：新增会话划词注释（annotations）。
+#   会话正文里划词 → 鼠标一放开立即浮出「＋ 注释 N」（选区先亮预览高亮）→ 在输入框上方的
+#   注释栏里写；保存后正文转正式高亮、词尾出编号上标，并把 `注释 N@"引用"：内容` 写进草稿。
+#   只有划词一个入口（不做右键菜单）；发送后注释清空、编号从 1 重来。
+#   路由：/api/annotations（list/create/update/delete/clear/index/purge）；
+#   数据：$DSH_HOME/dsh-toolkit/annotations/<sessionId>.json + index.json；分页 order 56。
+#   版本：annotations ?v=1、toolkit ?v=7，其余同 73。
+
+# live-entry-75.js：回退 annotations（见 live-entry-75.js 头注释）。
+#   74 接上注释组件后，客户端 bundle 在 boot 阶段有 entry 没能 active，
+#   DSH 抛 `web boot: N entries did not activate`，整个客户端插件一起失效。
+#   先把注释从入口摘掉恢复面板，注释代码留在 components/annotations/（client.parked.js）。
+#   版本：toolkit ?v=8（设置分页不再报 annotations 块），其余同 74。
+
+# live-entry-76.js：接回会话划词注释（annotations），并修掉 75 的误判。
+#   75 回退注释的真正原因不是注释组件本身，而是 package.json 的 exports 丢了 "./client"：
+#   DSH 的客户端模块加载器（@deepseek-ai/dsh-client-modules）对声明 dsh.client 的包要求
+#   exports 里有 "./client"，缺了整个客户端 bundle 被静默跳过（host 仍 active、/api 正常，
+#   但工具集入口与所有面板一起消失）。该键已恢复，并在 tools/check-client.mjs [4.3] 加守护。
+#   76 同时把注释的交互做稳：划词即出、编号角标（body fixed 层 + 真实 overflow 裁剪 +
+#   elementFromPoint 遮挡检测）、草稿走 Lexical 的 paste 通道真正分段、编号删除后 1..n 紧凑重排。
+#   版本：annotations ?v=2、toolkit ?v=10、notifications ?v=13，其余同 75。

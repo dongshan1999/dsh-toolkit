@@ -52,22 +52,22 @@ export const inject = ['connection', 'timer']
 
 /** 通知场景目录。顺序即面板里的展示顺序；enabled 只是默认值，用户配置会覆盖它。 */
 const KINDS = [
-  { id: 'approval-required', label: '需要权限确认', level: 'action', enabled: true, hint: '工具调用在等你批准（最需要立刻处理）' },
-  { id: 'question-required', label: '需要你回答', level: 'action', enabled: true, hint: '模型提问在等你的答案' },
-  { id: 'plan-review', label: '计划待审批', level: 'action', enabled: true, hint: '计划模式提交了待确认的计划' },
-  { id: 'turn-completed', label: '会话完成', level: 'info', enabled: true, hint: '一轮对话正常结束' },
-  { id: 'turn-error', label: '会话出错', level: 'error', enabled: true, hint: '回合以错误结束（模型失败会走到这里）' },
-  { id: 'turn-max-tokens', label: '输出被截断', level: 'warning', enabled: true, hint: '达到最大输出长度，回复没写完' },
-  { id: 'turn-blocked', label: '回合被阻断', level: 'warning', enabled: false, hint: '审批被拒或工具把这一轮拦下了' },
-  { id: 'turn-aborted', label: '会话被中断', level: 'warning', enabled: false, hint: '你自己、父会话或钩子取消了这一轮' },
-  { id: 'model-error', label: '模型请求失败', level: 'error', enabled: true, hint: '一次模型请求失败，附带 provider 与错误码' },
-  { id: 'agent-error', label: '步骤异常', level: 'error', enabled: false, hint: '比「会话出错」更细的步骤级错误（默认关，避免重复）' },
-  { id: 'subagent-completed', label: '子智能体完成', level: 'info', enabled: true, hint: '子会话正常结束' },
-  { id: 'subagent-failed', label: '子智能体失败', level: 'error', enabled: true, hint: '子会话报错 / 拒答 / 输出超长' },
-  { id: 'subagent-stopped', label: '子智能体中断', level: 'warning', enabled: false, hint: '子会话被中断（你主动停的那种）' },
-  { id: 'compaction-error', label: '压缩失败', level: 'error', enabled: true, hint: '上下文压缩没完成，长会话可能受影响' },
-  { id: 'config-error', label: '会话启动失败', level: 'error', enabled: true, hint: '会话配置解析失败，模型根本没跑起来' },
-  { id: 'account-expired', label: '账号凭据失效', level: 'error', enabled: true, hint: '服务端拒绝了当前登录状态，需要重新登录' },
+  { id: 'approval-required', label: '需要权限确认', level: 'action', icon: '🟠', enabled: true, hint: '工具调用在等你批准（最需要立刻处理）' },
+  { id: 'question-required', label: '需要你回答', level: 'action', icon: '🔵', enabled: true, hint: '模型提问在等你的答案' },
+  { id: 'plan-review', label: '计划待审批', level: 'action', icon: '🟠', enabled: true, hint: '计划模式提交了待确认的计划' },
+  { id: 'turn-completed', label: '会话完成', level: 'info', icon: '🟢', enabled: true, hint: '一轮对话正常结束' },
+  { id: 'turn-error', label: '会话出错', level: 'error', icon: '🔴', enabled: true, hint: '回合以错误结束（模型失败会走到这里）' },
+  { id: 'turn-max-tokens', label: '输出被截断', level: 'warning', icon: '🟡', enabled: true, hint: '达到最大输出长度，回复没写完' },
+  { id: 'turn-blocked', label: '回合被阻断', level: 'warning', icon: '🟡', enabled: false, hint: '审批被拒或工具把这一轮拦下了' },
+  { id: 'turn-aborted', label: '会话被中断', level: 'warning', icon: '🟡', enabled: false, hint: '你自己、父会话或钩子取消了这一轮' },
+  { id: 'model-error', label: '模型请求失败', level: 'error', icon: '🔴', enabled: true, hint: '一次模型请求失败，附带 provider 与错误码' },
+  { id: 'agent-error', label: '步骤异常', level: 'error', icon: '🔴', enabled: false, hint: '比「会话出错」更细的步骤级错误（默认关，避免重复）' },
+  { id: 'subagent-completed', label: '子智能体完成', level: 'info', icon: '🟢', enabled: true, hint: '子会话正常结束' },
+  { id: 'subagent-failed', label: '子智能体失败', level: 'error', icon: '🔴', enabled: true, hint: '子会话报错 / 拒答 / 输出超长' },
+  { id: 'subagent-stopped', label: '子智能体中断', level: 'warning', icon: '🟡', enabled: false, hint: '子会话被中断（你主动停的那种）' },
+  { id: 'compaction-error', label: '压缩失败', level: 'error', icon: '🔴', enabled: true, hint: '上下文压缩没完成，长会话可能受影响' },
+  { id: 'config-error', label: '会话启动失败', level: 'error', icon: '🔴', enabled: true, hint: '会话配置解析失败，模型根本没跑起来' },
+  { id: 'account-expired', label: '账号凭据失效', level: 'error', icon: '🔴', enabled: true, hint: '服务端拒绝了当前登录状态，需要重新登录' },
 ]
 
 const KIND_INDEX = new Map(KINDS.map((kind) => [kind.id, kind]))
@@ -177,7 +177,7 @@ function normalizeConfig(raw) {
 
 function metaOf(kind) {
   const found = KIND_INDEX.get(kind)
-  return found !== undefined ? found : { id: kind, label: kind, level: 'info', enabled: false, hint: '' }
+  return found !== undefined ? found : { id: kind, label: kind, level: 'info', icon: '⚪', enabled: false, hint: '' }
 }
 
 /** 会话 header 的薄封装：拿不到就当空对象，所有读 header 的地方都该走它。 */
@@ -575,6 +575,7 @@ export function apply(ctx) {
       id: 'n' + state.seq,
       kind: entry.kind,
       level: meta.level,
+      icon: meta.icon,
       // `status` 是「原因」——通知的副标题 / 面板里的徽章，始终取场景目录的 label，
       // 不受调用方影响，这样 16 种场景的措辞在面板里永远一致。
       status: meta.label,
@@ -613,7 +614,7 @@ export function apply(ctx) {
     const detail = typeof item.body === 'string' ? item.body : ''
     Promise.resolve()
       .then(() => sendNative({
-        title: item.title,
+        title: item.icon === undefined || item.icon === '' ? item.title : item.icon + ' ' + item.title,
         body: status === '' ? detail : detail === '' ? status : status + ' · ' + detail,
         subtitle: typeof item.workspace === 'string' ? item.workspace : '',
         level: item.level,
@@ -1031,24 +1032,51 @@ export function apply(ctx) {
       id: kind.id,
       label: kind.label,
       level: kind.level,
+      icon: kind.icon,
       hint: kind.hint,
       enabled: state.config.kinds[kind.id] !== false,
     }))
   }
 
+  /** 条目 id 形如 `n285`，序号就藏在里面。 */
+  function seqOf(item) {
+    const raw = typeof item.id === 'string' ? item.id : ''
+    const value = Number(raw.slice(1))
+    return Number.isFinite(value) && value > 0 ? value : 0
+  }
+
   function snapshot(query) {
     const now = Date.now()
     const since = Number(query.get('since'))
+    // 轻量增量：前端心跳每秒问一次「有没有新的」，不能让它背几百条全量。
+    // 只回 seq 之后新增的条目 + 未读数，响应通常几十字节。
+    const light = query.get('light') === '1' || query.get('light') === 'true'
+    const sinceSeq = Number(query.get('seq'))
     const limitRaw = Number(query.get('limit'))
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(1000, Math.round(limitRaw)) : 300
     const unreadOnly = query.get('unread') === '1' || query.get('unread') === 'true'
     let items = state.items
+    if (light) {
+      // 用 seq 而不是 createdAt：去重合并只会改 createdAt、seq 不变，那些条目
+      // 不需要重新提醒。
+      if (Number.isFinite(sinceSeq) && sinceSeq >= 0) items = items.filter((item) => seqOf(item) > sinceSeq)
+      items = items.slice(0, limit)
+      return {
+        ok: true,
+        now,
+        seq: state.seq,
+        unread: unreadCount(),
+        total: state.items.length,
+        items,
+      }
+    }
     if (Number.isFinite(since) && since > 0) items = items.filter((item) => (Number(item.createdAt) || 0) > since)
     if (unreadOnly) items = items.filter((item) => item.read !== true)
     items = items.slice(0, limit)
     return {
       ok: true,
       now,
+      seq: state.seq,
       unread: unreadCount(),
       total: state.items.length,
       items,

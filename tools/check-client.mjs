@@ -895,9 +895,9 @@ if (mtPanel !== undefined) {
 const nfPanel = panelOf('notifications')
 if (nfPanel === undefined) fail('notifications 面板未注册（main）')
 {
-  const strayOverlays = plugins.filter((p) => p.meta.name === 'shell.overlay')
+  const strayOverlays = plugins.filter((p) => p.meta.name === 'shell.overlay' && String(p.meta.id || '').startsWith('notifications'))
   check(strayOverlays.length === 0,
-    `notifications 不注册站内浮层（提醒只走系统通知），shell.overlay 注册数为 ${strayOverlays.length}`)
+    `notifications 不注册站内浮层（提醒只走系统通知），notifications 自己的 shell.overlay 注册数为 ${strayOverlays.length}`)
 }
 
 if (nfPanel !== undefined) {
@@ -920,11 +920,19 @@ if (nfPanel !== undefined) {
     ['config-error', '会话启动失败', 'error', true],
     ['account-expired', '账号凭据失效', 'error', true],
   ]
-  const nfKinds = nfKindRows.map(([id, label, level, enabled]) => ({ id, label, level, hint: label + '：内部说明', enabled }))
+  const nfKindIcons = {
+    'approval-required': '\u{1F7E0}', 'question-required': '\u{1F535}', 'plan-review': '\u{1F7E0}',
+    'turn-completed': '\u{1F7E2}', 'turn-error': '\u{1F534}', 'turn-max-tokens': '\u{1F7E1}',
+    'turn-blocked': '\u{1F7E1}', 'turn-aborted': '\u{1F7E1}', 'model-error': '\u{1F534}',
+    'agent-error': '\u{1F534}', 'subagent-completed': '\u{1F7E2}', 'subagent-failed': '\u{1F534}',
+    'subagent-stopped': '\u{1F7E1}', 'compaction-error': '\u{1F534}', 'config-error': '\u{1F534}',
+    'account-expired': '\u{1F534}',
+  }
+  const nfKinds = nfKindRows.map(([id, label, level, enabled]) => ({ id, label, level, icon: nfKindIcons[id], hint: label + '：内部说明', enabled }))
   // title = 谁（工作区 / 会话），status = 为什么（场景 label），body = 明细。
   // 这是用户指定的信息顺序，用例必须按这个顺序断言，否则排版被改回去也没人发现。
   const nfItem = (over = {}) => ({
-    id: 'n1', kind: 'turn-completed', level: 'info', title: 'demo / 测试会话',
+    id: 'n1', kind: 'turn-completed', level: 'info', icon: '\u{1F7E2}', title: 'demo / 测试会话',
     status: '会话完成', workspace: 'demo',
     body: '第 1 轮已回复完成', detail: '', sessionId: 's1',
     sessionTitle: '测试会话', dedupeKey: 'turn-completed:s1:1', count: 1, createdAt: now, read: false,
@@ -974,7 +982,7 @@ if (nfPanel !== undefined) {
         items: [nfItem({ id: 'n2', kind: 'approval-required', level: 'action', status: '需要权限确认', body: '工具 bash 在等你批准' })],
       })))
       return elOf(nfPanel.component)
-    }, ['需要权限确认', '工具 bash 在等你批准', '待处理', '跳到会话']],
+    }, ['需要权限确认', '工具 bash 在等你批准', '待审批', '跳到会话']],
     ['已加载 · 去重计数', () => {
       OVERRIDES.set('NotificationsPanel', nfSlots(nfPage({ items: [nfItem({ count: 3 })] })))
       return elOf(nfPanel.component)
@@ -1032,6 +1040,28 @@ if (nfPanel !== undefined) {
   ]
   runGroup('notifications', ['NotificationsPanel'], nfCases)
 
+  // 系统通知标题的图标前缀：macOS 通知中心不允许自定义颜色，四类只能用图标区分。
+  {
+    const nfSource = readFileSync(new URL('../components/notifications/client.js', import.meta.url), 'utf8')
+    check(nfSource.includes('typeof item.icon') && nfSource.includes('TONE_ICON[toneOf(item)]'),
+      '系统通知标题带图标前缀（取 item.icon，缺省按场景色调兜底）')
+    check(nfSource.includes("const TONE_ICON = { success: '\u{1F7E2}'"),
+      '前端自带一套色调图标（宿主没给 icon 时不会退化成白点）')
+
+    // 弹通知的延迟与静默策略：心跳必须走轻量增量（全量几百条，1.5 秒一次背不动），
+    // 同一会话的「成功」通知要合并，正在看的会话不再弹。
+    check(/const POLL_MS = 1500/.test(nfSource) && /const FULL_POLL_MS = 8000/.test(nfSource),
+      '心跳 1.5 秒一次（POLL_MS），全量快照保持 8 秒（FULL_POLL_MS）')
+    check(nfSource.includes("'/api/notifications?light=1&seq='"),
+      '心跳走 /api/notifications?light=1&seq=… 轻量增量，而不是每次拉全量')
+    check(/const THROTTLE_MS = 60000/.test(nfSource) && nfSource.includes('function quiet('),
+      '同一会话同一场景的成功通知一分钟内合并（THROTTLE_MS + quiet）')
+    check(nfSource.includes("inject('conversation.composer.dock'") && nfSource.includes('FocusTracker'),
+      '用 session 作用域的空组件跟踪「当前打开的是哪个会话」')
+    check(nfSource.includes('notified.ids.indexOf(id)') && nfSource.includes('function deliver('),
+      '所有弹通知路径都过 deliver()（同一条通知不会弹两次）')
+  }
+
   // ── 交互回归：数字卡片取值 + 筛选与开关真的接到动作 ──
   {
     const nodes = nfNodes(nfPage({ unread: 2, total: 5 }))
@@ -1070,7 +1100,38 @@ if (nfPanel !== undefined) {
       onlyUnread.props.onClick()
       check(slots[1] === 'unread', '点「仅未读」把筛选状态切到 unread')
     }
-    // 面板上只该剩一个「测试系统通知」。以前有三个测试按钮（发条测试 / 测试系统通知 /
+    // 色调按场景区分：level 只有四档，action 里混着审批与提问，必须能分开。
+  const nfToneClass = (item) => {
+    const nodes = nfNodes(nfPage({ items: [nfItem(item)] }))
+    const dot = nodes.find((node) => typeof node.props.className === 'string' && node.props.className.indexOf('nf-dot ') === 0)
+    return dot === undefined ? '' : dot.props.className
+  }
+  check(nfToneClass({}) === 'nf-dot nf-lv-success', '完成的会话用成功色（nf-lv-success）')
+  check(nfToneClass({ kind: 'subagent-completed', level: 'info', status: '子智能体完成' }) === 'nf-dot nf-lv-success', '子智能体完成用成功色')
+  check(nfToneClass({ kind: 'approval-required', level: 'action', status: '需要权限确认' }) === 'nf-dot nf-lv-approval', '等待审批用审批色（nf-lv-approval）')
+  check(nfToneClass({ kind: 'plan-review', level: 'action', status: '计划待审批' }) === 'nf-dot nf-lv-approval', '计划待审批用审批色')
+  check(nfToneClass({ kind: 'question-required', level: 'action', status: '需要你回答' }) === 'nf-dot nf-lv-question', '等待回答用提问色（nf-lv-question）')
+  check(nfToneClass({ kind: 'turn-error', level: 'error', status: '会话出错' }) === 'nf-dot nf-lv-error', '出错用失败色（nf-lv-error）')
+  check(nfToneClass({ kind: 'turn-max-tokens', level: 'warning', status: '输出被截断' }) === 'nf-dot nf-lv-warning', '警告保持警告色')
+  {
+    const nodes = nfNodes(nfPage({ items: [nfItem({ kind: 'question-required', level: 'action', status: '需要你回答' })] }))
+    check(nodes.some((node) => textOf(node) === '待回答'), '提问条目的色调标签是「待回答」')
+    check(nodes.some((node) => typeof node.props.className === 'string' && node.props.className === 'nf-tone-label nf-tone-question'), '提问条目的标签带提问色')
+  }
+  // 设置页的场景目录也要有颜色点，方便一眼看出哪一类通知占比高。
+  {
+    const nodes = nfNodes(nfPage(), { showKinds: true })
+    const dots = nodes.filter((node) => typeof node.props.className === 'string' && node.props.className.indexOf('nf-kind-dot ') === 0)
+    check(dots.length === nfKinds.length, `场景目录每行都有颜色点（${dots.length}/${nfKinds.length}）`)
+    check(dots.some((node) => node.props.className === 'nf-kind-dot nf-lv-question'), '场景目录里「需要你回答」用提问色')
+    // 图标是系统通知标题前那套的前置说明：面板里能看到「哪个图标 = 哪一类」。
+    const icons = nodes.filter((node) => node.props.className === 'nf-kind-icon').map(textOf)
+    check(icons.length === nfKinds.length, `场景目录每行都带图标（${icons.length}/${nfKinds.length}）`)
+    check(icons.includes('\u{1F7E2}') && icons.includes('\u{1F535}') && icons.includes('\u{1F534}') && icons.includes('\u{1F7E0}'),
+      '场景目录里出现成功 🟢 / 待回答 🔵 / 失败 🔴 / 待审批 🟠 四种图标')
+  }
+
+  // 面板上只该剩一个「测试系统通知」。以前有三个测试按钮（发条测试 / 测试系统通知 /
     // 测试兜底通道），用户要求精简，这里反向盯住别再长回来。
     const testButtons = liveNodes.filter((node) => node.type === 'button' && textOf(node).indexOf('测试') !== -1)
     check(testButtons.length === 1 && textOf(testButtons[0]) === '测试系统通知',
@@ -1086,6 +1147,174 @@ if (nfPanel !== undefined) {
       try { kindToggle.props.onClick() } catch (e) { threw = e }
       check(threw === null, '点场景开关不抛异常（写入走 Host 用例验证）')
     }
+  }
+}
+
+// ── notifications：心跳提速 / 重复合并 / 当前会话静默（行为验证）──
+// 上面只断言了源码里写着这些逻辑；这里真的驱动一遍心跳，确认三条策略各自生效。
+// 做法：临时替换 __ModuleLoader__ / fetch / Notification，单独 apply 一份客户端，
+// 拿它注册的 1.5 秒心跳回调手动触发（页面里由 ctx.interval 驱动）。
+{
+  const savedFetch = globalThis.fetch
+  const savedNotification = globalThis.Notification
+  const savedLoader = globalThis.window.__ModuleLoader__
+  const savedFocus = globalThis.document.hasFocus
+  try {
+    const cleanups = []
+    const fakeReact = Object.assign({}, React, {
+      // 真 React 会执行 effect，这里也执行，才能拿到 FocusTracker 的 view 更新/清理。
+      useEffect(fn) {
+        const cleanup = fn()
+        if (typeof cleanup === 'function') cleanups.push(cleanup)
+      },
+    })
+    const shown = []
+    class FakeNotification {
+      static permission = 'granted'
+      static requestPermission() { return Promise.resolve('granted') }
+      constructor(title, options) {
+        this.title = title
+        this.options = options || {}
+        shown.push(this)
+      }
+      close() {}
+    }
+    const server = {
+      seq: 5,
+      items: [
+        { id: 'n5', kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 5 轮', sessionId: 's-old', icon: '\u{1F7E2}', createdAt: 5, read: false },
+        { id: 'n4', kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 4 轮', sessionId: 's-old', icon: '\u{1F7E2}', createdAt: 4, read: false },
+      ],
+      fresh: [],
+    }
+    const urls = []
+    let focused = true
+    globalThis.Notification = FakeNotification
+    globalThis.document.hasFocus = () => focused
+    globalThis.fetch = (url) => {
+      const text = String(url)
+      urls.push(text)
+      if (text.indexOf('light=1') !== -1) {
+        const seqText = /seq=(-?\d+)/.exec(text)
+        const seq = seqText === null ? -1 : Number(seqText[1])
+        const items = server.fresh.filter((item) => Number(item.id.slice(1)) > seq)
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ok: true, seq: server.seq, unread: 1, total: server.items.length, items }),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          ok: true, seq: server.seq, unread: 1, total: server.items.length, items: server.items,
+          kinds: [], config: { version: 1, enabled: true, native: { enabled: false, sound: true } },
+          native: {}, files: {}, focused: true,
+        }),
+      })
+    }
+    let captured = null
+    globalThis.window = Object.assign({}, globalThis.window, {
+      __ModuleLoader__: { load(m) { captured = m } },
+    })
+    await import(pathToFileURL(path.join(ROOT, 'components', 'notifications', 'client.js')).href + '?behavior')
+    const mod = captured.factory((name) => {
+      if (name === 'react') return fakeReact
+      throw new Error('未知依赖 ' + name)
+    })
+    const timers = []
+    const registrations = []
+    mod.apply({
+      effect(f) { f() },
+      interval(fn, ms) { timers.push({ fn, ms }); return () => {} },
+      timeout() { return () => {} },
+      get: () => undefined,
+      slots: {
+        inject(key, cb) { cb() },
+        register(meta, component) { registrations.push({ meta, component }) },
+      },
+    })
+    const tick = async () => { for (let i = 0; i < 6; i += 1) await new Promise((resolve) => setTimeout(resolve, 0)) }
+    const heartbeat = timers.find((entry) => entry.ms === 1500)
+    if (heartbeat === undefined) fail('没有 1.5 秒的心跳定时器')
+    const poll = () => { if (heartbeat !== undefined) heartbeat.fn() }
+    await tick()
+    check(shown.length === 0, `首帧不补弹历史记录（2 条历史，弹了 ${shown.length} 条）`)
+    const focus = registrations.find((entry) => entry.meta.id === 'notifications-focus')
+    check(focus !== undefined, '注册了当前会话跟踪组件（conversation.composer.dock / notifications-focus）')
+
+    const push = (item) => {
+      server.seq += 1
+      server.fresh = [Object.assign({ icon: '\u{1F7E2}', read: false, createdAt: server.seq }, item, { id: 'n' + server.seq })]
+    }
+    // ① 心跳发现新条目 → 立刻弹
+    push({ kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 1 轮', sessionId: 's1' })
+    poll()
+    await tick()
+    check(shown.length === 1, `心跳发现新条目后弹 1 条系统通知（${shown.length}）`)
+    check(String(shown[0]?.title).indexOf('\u{1F7E2}') === 0, `标题带场景图标（${shown[0]?.title}）`)
+    // ② 同一会话同一场景 60 秒内第二条 → 合并，不弹
+    push({ kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 2 轮', sessionId: 's1' })
+    poll()
+    await tick()
+    check(shown.length === 1, `同一会话一分钟内的第二条「会话完成」不再弹（${shown.length}）`)
+    // ③ 同一条通知重复出现在增量里 → 不重复弹
+    poll()
+    await tick()
+    check(shown.length === 1, '同一条通知（同 id）不会弹两次')
+    // ④ 审批类不参与合并
+    push({ kind: 'approval-required', level: 'action', status: '需要权限确认', body: 'rm -rf', sessionId: 's1', icon: '\u{1F7E0}' })
+    poll()
+    await tick()
+    check(shown.length === 2, `审批通知不受一分钟合并影响（${shown.length}）`)
+    // ⑤ 正在看的会话 + 窗口有焦点 → 成功类不弹
+    if (focus !== undefined) focus.component({ sessionId: 's2' })
+    push({ kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 1 轮', sessionId: 's2' })
+    poll()
+    await tick()
+    check(shown.length === 2, `正在看的会话（s2）完成时不再弹系统通知（${shown.length}）`)
+    // ⑥ 同一会话但窗口失焦 → 照弹
+    focused = false
+    push({ kind: 'turn-completed', level: 'info', status: '会话完成', body: '第 2 轮', sessionId: 's2' })
+    poll()
+    await tick()
+    check(shown.length === 3, `切到别的 app（窗口失焦）时同会话完成仍提醒（${shown.length}）`)
+    // ⑦ 离开会话（跟踪组件卸载）→ 恢复提醒；换个场景避开上一条的合并窗口
+    focused = true
+    for (const cleanup of cleanups) cleanup()
+    push({ kind: 'subagent-completed', level: 'info', status: '子智能体完成', body: '第 3 轮', sessionId: 's2' })
+    poll()
+    await tick()
+    check(shown.length === 4, `离开那个会话后恢复提醒（${shown.length}）`)
+    // ⑧ Host 没给 icon（跑着旧入口）→ 前端按场景色调自己推，不能退化成清一色白点。
+    // 这就是「会话完成却是白色圆点」那个现象：宿主还在旧入口，条目里没有 icon 字段。
+    server.seq += 1
+    server.fresh = [{
+      id: 'n' + server.seq, kind: 'approval-required', level: 'action', status: '需要权限确认',
+      body: '工具 bash', sessionId: 's3', read: false, createdAt: server.seq,
+    }]
+    poll()
+    await tick()
+    check(shown.length === 5, `宿主没给 icon 时照样弹（${shown.length}）`)
+    check(String(shown[4]?.title).indexOf('\u{1F7E0}') === 0,
+      `宿主没给 icon 时按场景兜底成 🟠 待审批（${shown[4]?.title}）`)
+    server.seq += 1
+    server.fresh = [{
+      id: 'n' + server.seq, kind: 'turn-completed', level: 'info', status: '会话完成',
+      body: '第 4 轮', sessionId: 's4', read: false, createdAt: server.seq,
+    }]
+    poll()
+    await tick()
+    check(String(shown[5]?.title).indexOf('\u{1F7E2}') === 0,
+      `宿主没给 icon 时「会话完成」兜底成 🟢，不再是白点（${shown[5]?.title}）`)
+    check(urls.filter((url) => url.indexOf('light=1') !== -1).every((url) => /seq=-?\d+/.test(url)),
+      '心跳全部走 light=1 且带 seq 水位')
+  } finally {
+    globalThis.fetch = savedFetch
+    globalThis.Notification = savedNotification
+    globalThis.window.__ModuleLoader__ = savedLoader
+    globalThis.document.hasFocus = savedFocus
   }
 }
 
@@ -1357,7 +1586,7 @@ if (nfPanel !== undefined) {
   if (tkShellPanel !== undefined && tkShellGlyph !== undefined) {
     const tkCases = [
       ['分页栏与默认分页', () => elOf(tkShellPanel.component),
-        ['图片生成', '剪贴板', '模型测试', '通知', 'MCP', 'Skill', '设置', '左栏收纳']],
+        ['图片生成', '剪贴板', '模型测试', '通知', 'MCP', 'Skill', '注释', '设置', '左栏收纳']],
       ['侧边栏主图标', () => elOf(tkShellGlyph.component, { size: 18 }), ['T']],
     ]
     runGroup('toolkit', ['ToolkitPanel', 'Panel'], tkCases)
@@ -2649,6 +2878,7 @@ try {
   check(page.status === 200 && page.body.ok === true, 'GET /api/notifications 返回 ok:true')
   check(page.body.items.length === 1 && page.body.items[0].kind === 'turn-completed',
     `turn/end(completed) → 会话完成通知（${page.body.items[0]?.kind}）`)
+  check(page.body.items[0].icon === '\u{1F7E2}', `通知条目自带图标（${page.body.items[0]?.icon}）`)
   // 排版顺序：title = 谁（工作区 / 会话），status = 为什么（场景 label），body = 明细。
   // 用户明确要求「先是标题，然后是原因」，所以标题里必须有工作区目录名 demo，
   // 而「会话完成」只能出现在 status 里，不能又回到 title 里。
@@ -2656,6 +2886,24 @@ try {
   check(page.body.items[0].status === '会话完成', `通知 status 是场景文案（${page.body.items[0]?.status}）`)
   check(page.body.items[0].workspace === 'demo', `通知带上 workspace 字段（${page.body.items[0]?.workspace}）`)
   check(page.body.unread === 1, '未读计数随通知增长')
+
+  // 心跳用的轻量增量：只回 seq 之后新增的条目，且不带 kinds / config / files。
+  // 前端 1.5 秒问一次的就是它 —— 一旦退化成全量，每次轮询都要传几百条。
+  {
+    const nfLight = async (seq) => {
+      const response = await nfRoute.fetch(new Request('http://127.0.0.1:3080/api/notifications?light=1&seq=' + seq, { method: 'GET' }))
+      return { status: response.status, body: await response.json() }
+    }
+    const light = await nfLight(page.body.seq - 1)
+    check(light.status === 200 && Array.isArray(light.body.items) && light.body.items.length === 1,
+      `light=1&seq=<当前水位-1> 只回最新一条（${light.body.items?.length} 条）`)
+    check(typeof light.body.seq === 'number' && light.body.seq === page.body.seq,
+      'light 响应带回当前水位 seq')
+    check(light.body.kinds === undefined && light.body.files === undefined && light.body.config === undefined,
+      'light 响应不带 kinds / config / files（只回条目与未读数）')
+    const idle = await nfLight(page.body.seq)
+    check(Array.isArray(idle.body.items) && idle.body.items.length === 0, 'seq 等于当前水位时没有新条目')
+  }
 
   // ② 同一轮再报一次不能变成两条（去重键 turn-completed:s1:1）
   turnEnd('s1', { kind: 'completed' }, 1)
@@ -2859,6 +3107,15 @@ try {
   check(page.body.kinds.length === 16, `场景目录 16 种（当前 ${page.body.kinds.length} 种）`)
   check(['approval-required', 'question-required', 'turn-completed', 'model-error', 'subagent-completed', 'subagent-failed'].every((id) => page.body.kinds.some((kind) => kind.id === id)),
     '用户点名的场景都在目录里（权限/作答/完成/模型失败/子智能体）')
+  check(page.body.kinds.every((kind) => typeof kind.icon === 'string' && kind.icon !== ''),
+    '每个场景都带图标（系统通知标题前缀用，macOS 通知不能自定义颜色）')
+  const iconOfKind = Object.fromEntries(page.body.kinds.map((kind) => [kind.id, kind.icon]))
+  check(iconOfKind['turn-completed'] === '\u{1F7E2}' && iconOfKind['subagent-completed'] === '\u{1F7E2}'
+    && iconOfKind['question-required'] === '\u{1F535}'
+    && iconOfKind['approval-required'] === '\u{1F7E0}' && iconOfKind['plan-review'] === '\u{1F7E0}'
+    && iconOfKind['turn-error'] === '\u{1F534}' && iconOfKind['subagent-failed'] === '\u{1F534}'
+    && iconOfKind['turn-max-tokens'] === '\u{1F7E1}',
+    '四类图标成组：成功 🟢 / 待审批 🟠 / 待回答 🔵 / 失败 🔴 / 警告 🟡')
   check(page.body.files.config === nfConfigPath && page.body.files.queue === nfQueuePath,
     'GET 回报的落盘路径尊重 NOTIFICATIONS_CONFIG / NOTIFICATIONS_QUEUE')
 
@@ -3236,6 +3493,8 @@ const ENV_KEYS = [
   'IMAGE_GEN_DIR', 'IMAGE_GEN_CONFIG', 'IMAGE_GEN_LIBRARY', 'IMAGE_GEN_USAGE', 'IMAGE_GEN_PROMPTS', 'IMAGE_GEN_FAVORITES',
   'TOKEN_USAGE_PRICING', 'MODEL_TEST_PARAMS', 'MODEL_TEST_PRESETS',
   'NOTIFICATIONS_CONFIG', 'NOTIFICATIONS_QUEUE',
+  'ANNOTATIONS_DIR', 'ANNOTATIONS_INDEX', 'ANNOTATIONS_MAX_PER_SESSION', 'ANNOTATIONS_QUOTE_CHARS',
+  'ANNOTATIONS_SELECTION_DELAY', 'ANNOTATIONS_FLOATING_BUTTON',
 ]
 const savedEnv = ENV_KEYS.map((name) => [name, process.env[name]])
 const setEnv = (name, value) => { if (value === undefined) delete process.env[name]; else process.env[name] = value }
@@ -3388,6 +3647,26 @@ try {
     }
   }
   check(true, `磁盘上的 ${entryFiles.length} 个入口都能加载（${entryFiles.join(', ')}）`)
+
+  // 包清单与客户端入口契约：DSH 的客户端模块加载器（@deepseek-ai/dsh-client-modules 的
+  // clientExportOf）要求声明了 dsh.client 的包必须导出 "./client"。少了它，整个客户端
+  // bundle 被静默跳过：host 侧仍然 active、/api 正常，但侧边栏入口和所有面板一起消失，
+  // 看起来就是「插件没了」。2026-10-22 改 exports 时丢掉这三个键，正是这么坏的。
+  const pkg = JSON.parse(await fs.readFile(path.join(ROOT, 'package.json'), 'utf8'))
+  if (pkg.dsh !== null && typeof pkg.dsh === 'object' && pkg.dsh.client !== undefined) {
+    const clientRel = pkg.exports === undefined ? undefined : pkg.exports['./client']
+    check(typeof clientRel === 'string',
+      'package.json 声明 dsh.client 时必须导出 "./client"（缺了客户端 bundle 会被静默跳过）')
+    if (typeof clientRel === 'string') {
+      check(await exists(path.join(ROOT, clientRel)),
+        `exports["./client"] 指向的文件存在（${clientRel}）`)
+    }
+    const mainRel = pkg.exports === undefined ? undefined : pkg.exports['.']
+    check(typeof mainRel === 'string' && await exists(path.join(ROOT, mainRel)),
+      'exports["."] 指向存在的主入口（index.js）')
+    check(pkg.exports !== undefined && pkg.exports['./package.json'] === './package.json',
+      'exports 含 "./package.json"（profile 侧解析包清单要用）')
+  }
 }
 
 // ── 4.4 toolkit 设置分页：只读汇总各组件的数据落点 ──
@@ -3411,8 +3690,8 @@ try {
     check(res.status === 200 && body.ok === true, '设置接口返回 200 {ok:true}')
     check(body.dataDir === SET_DATA && body.version === '0.2.0', `返回数据根目录与插件版本（v${body.version}）`)
     check(JSON.stringify(body.components.map((c) => c.id)) === JSON.stringify([
-      'image-gen', 'token-usage', 'model-test', 'notifications', 'clipboard', 'mcp', 'skill',
-    ]), '组件清单固定为 7 块（image-gen / token-usage / model-test / notifications / clipboard / mcp / skill）')
+      'image-gen', 'token-usage', 'model-test', 'notifications', 'clipboard', 'annotations', 'mcp', 'skill',
+    ]), '组件清单固定为 8 块（image-gen / token-usage / model-test / notifications / clipboard / annotations / mcp / skill）')
     const clipboard = body.components.find((c) => c.id === 'clipboard')
     check(clipboard !== undefined && clipboard.files.length === 2
       && clipboard.files.some((f) => f.path.endsWith(path.join('clipboard', 'index.json')))
@@ -3698,6 +3977,223 @@ try {
   fail('剪贴板 Client 用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
 } finally {
   globalThis.fetch = NATIVE_FETCH
+}
+
+// ── 4.7 注释 Host：编号递增、保存回写、删除不重排、清空重置、路径穿越 ──
+try {
+  const AN_DATA = path.join(TMP_ROOT, 'annotations-data')
+  await fs.rm(AN_DATA, { recursive: true, force: true })
+  clearDataEnv()
+  setEnv('ANNOTATIONS_DIR', AN_DATA)
+
+  const anHost = await import(pathToFileURL(path.join(ROOT, 'components', 'annotations', 'host.js')).href)
+  check(Array.isArray(anHost.inject) && anHost.inject.includes('connection') && anHost.inject.includes('timer'),
+    'annotations host 声明 inject 含 connection + timer')
+  const an = makeHostCtx()
+  anHost.apply(an.ctx)
+
+  const AN_PATHS = ['/api/annotations', '/api/annotations/update', '/api/annotations/delete', '/api/annotations/clear', '/api/annotations/index', '/api/annotations/purge']
+  check(AN_PATHS.every((routePath) => an.routes.has(routePath)), '注释注册 6 条路由（list/create 共用 /api/annotations 分 method）')
+  const anCall = async (target, body, method) => {
+    const route = an.routes.get(target.split('?')[0])
+    const init = { method: method || (body === undefined ? 'GET' : 'POST') }
+    if (body !== undefined) init.body = JSON.stringify(body)
+    const res = await route.fetch(new Request('http://127.0.0.1:3080' + target, init))
+    return { status: res.status, body: await res.json() }
+  }
+  const anModeOf = async (target) => { try { return (await fs.stat(target)).mode & 0o777 } catch { return -1 } }
+  const sessionId = 'session-selfcheck-1'
+
+  const one = await anCall('/api/annotations', { sessionId, quote: 'git clean -fdx', prefix: '建议先跑 ', suffix: ' 再继续', note: '' })
+  check(one.status === 200 && one.body.item.index === 1 && one.body.item.note === '',
+    '第一条注释 index=1，note 为空串（= 还在编辑中）')
+  check(one.body.nextIndex === 2 && one.body.item.quote === 'git clean -fdx' && one.body.item.prefix === '建议先跑 ',
+    '返回下个编号与划词锚点（quote / prefix / suffix）')
+
+  const two = await anCall('/api/annotations', { sessionId, quote: '再把 dry-run 写进脚本', note: '顺手补一条' })
+  check(two.status === 200 && two.body.item.index === 2 && two.body.nextIndex === 3,
+    '同一会话内编号递增（1 → 2 → 下个 3）')
+
+  check(await anModeOf(path.join(AN_DATA, sessionId + '.json')) === 0o600, '会话文件权限 0600')
+  check(await anModeOf(AN_DATA) === 0o700, '注释目录权限 0700')
+
+  const list = await anCall('/api/annotations?sessionId=' + encodeURIComponent(sessionId), undefined, 'GET')
+  check(list.body.ok === true && list.body.total === 2 && list.body.open === 1 && list.body.nextIndex === 3,
+    'list 返回总数 2、编辑中 1、下个编号 3')
+  check(list.body.items[0].index === 1 && list.body.items[1].index === 2, 'list 按编号升序')
+  check(list.body.limits !== undefined && list.body.limits.floatingButton === true && list.body.limits.badge === undefined,
+    'list 带回前端开关（浮层按钮 / 上标）与划词延迟')
+
+  const saved = await anCall('/api/annotations/update', { sessionId, id: one.body.item.id, note: '把 dry-run 也写进脚本' })
+  check(saved.status === 200 && saved.body.item.note === '把 dry-run 也写进脚本' && typeof saved.body.item.draftedAt === 'number',
+    '保存 note 后 draftedAt 被记下（= 已插入草稿）')
+  const again = await anCall('/api/annotations/update', { sessionId, id: one.body.item.id, note: '再改一次', draftedAt: 1 })
+  check(again.body.item.draftedAt === saved.body.item.draftedAt, 'draftedAt 只在第一次插入时记录，重新插入不覆盖')
+
+  const staleOk = await anCall('/api/annotations/update', { sessionId, id: two.body.item.id, stale: true })
+  check(staleOk.body.item.stale === true, '原文被改动后可以标 stale')
+
+  const removed = await anCall('/api/annotations/delete', { sessionId, id: one.body.item.id })
+  check(removed.status === 200 && removed.body.item.index === 1, '删除返回被删的那条（含编号）')
+  const afterDelete = await anCall('/api/annotations?sessionId=' + encodeURIComponent(sessionId))
+  check(afterDelete.body.items.length === 1 && afterDelete.body.items[0].index === 1,
+    '删掉 1 号后，原来的 2 号补成 1（编号紧凑重排）')
+  const third = await anCall('/api/annotations', { sessionId, quote: '第三段话', note: '新的一条' })
+  check(third.status === 200 && third.body.item.index === 2, '重排后新建的注释接着排在 2')
+  check((await anCall('/api/annotations/delete', { sessionId, id: one.body.item.id })).status === 404,
+    '重复删除同一条 → 404 annotations/not-found')
+
+  check((await anCall('/api/annotations', { sessionId: '../evil', quote: 'x' })).status === 400,
+    'sessionId 带 ../ → 400（不会写出数据目录）')
+  check((await anCall('/api/annotations', { sessionId, quote: '   ' })).status === 400, 'quote 只有空白 → 400 annotations/invalid')
+
+  const idx = await anCall('/api/annotations/index', undefined, 'GET')
+  check(idx.body.total === 1 && idx.body.sessions[0].sessionId === sessionId && idx.body.sessions[0].count === 2,
+    'index 汇总：1 个会话、2 条注释')
+
+  setEnv('ANNOTATIONS_MAX_PER_SESSION', '2')
+  await anCall('/api/annotations', { sessionId, quote: 'a' })
+  const overLimit = await anCall('/api/annotations', { sessionId, quote: 'b' })
+  check(overLimit.status === 409 && overLimit.body.code === 'annotations/limit',
+    '超过 ANNOTATIONS_MAX_PER_SESSION → 409 annotations/limit')
+  delete process.env.ANNOTATIONS_MAX_PER_SESSION
+
+  const cleared = await anCall('/api/annotations/clear', { sessionId })
+  check(cleared.status === 200 && cleared.body.cleared === 2, 'clear 报告清掉剩余条数（上限用例后共 2 条）')
+  const emptied = await anCall('/api/annotations?sessionId=' + encodeURIComponent(sessionId), undefined, 'GET')
+  check(emptied.body.total === 0 && emptied.body.nextIndex === 1, '清空后编号重置为 1（发送后从「注释 1」重来）')
+
+  await anCall('/api/annotations', { sessionId, quote: '留着被 purge' })
+  const purged = await anCall('/api/annotations/purge', { sessionId })
+  check(purged.status === 200 && purged.body.purged === 1 && !(await exists(path.join(AN_DATA, sessionId + '.json'))),
+    'purge 删掉会话文件与索引项')
+
+  const anClientText = await fs.readFile(path.join(ROOT, 'components', 'annotations', 'client.js'), 'utf8')
+  check(anClientText.includes("addEventListener('mouseup'") && anClientText.includes('dsh-annotation-preview'),
+    '客户端监听 mouseup（放开即出）并先画预览高亮')
+  check(anClientText.includes("'＋ 注释 '") && anClientText.includes("'编辑 注释 '") && anClientText.includes('DRAFT_PREFIX'),
+    '按钮文案带下一个编号；与已有注释重叠时改成「编辑 注释 N」')
+  check(anClientText.includes('function stripDraftBlock'),
+    '草稿整行可剥离（删除注释时按 [注释 N] 行清掉）')
+  check(anClientText.includes("(where === '' ? '' : ' ' + where) + ' \"' + quote + '\"：' + item.note"),
+    '草稿一行写完（编号 + 行号 + 完整原文并压平空白 + 注释），不带字数')
+  check(!anClientText.includes("'第 ' + blockStart + ' 段 '"),
+    '位置只报行号（第 30–31 行），不再出现「第 N 段」')
+  check(!anClientText.includes('quoteSize') && !anClientText.includes('原文已变'),
+    '注释栏不再显示字数，也没有「原文已变」标签')
+  check(anClientText.includes("'注释 ' + item.index") && anClientText.includes('an-tips'),
+    '已保存的注释收成「注释 N」小标签，悬停弹自绘 tips')
+  check(anClientText.includes('S.tipsQuote') && anClientText.includes('S.tipsNote'),
+    'tips 里同时给出完整划词内容与注释内容')
+  check(anClientText.includes('setEditingId(item.id)'),
+    '点击「注释 N」标签回到编辑态')
+  check(anClientText.includes("execCommand('insertParagraph'"),
+    '插入草稿时先另起一段（每条注释独占一行，不接在上一行后面）')
+  check(anClientText.includes('repaintRetry'),
+    '会话正文晚于注释数据挂载时会重试重画角标')
+  check(anClientText.includes('function whereLabel') && anClientText.includes('function lineAt')
+    && anClientText.includes('function messageBlock') && anClientText.includes('blockIndexOf'),
+    '注释带行号定位（同段 第 X–Y 行；跨段 第 X 行 → 第 Y 行）')
+  const storeText = await fs.readFile(path.join(ROOT, 'components/annotations/store.js'), 'utf8')
+  check(storeText.includes('lineStart: cleanInt') && storeText.includes('blockStart: cleanInt'),
+    'store 持久化 blockStart/blockEnd/lineStart/lineEnd')
+  check(!anClientText.includes('slice(0, 80)'),
+    '草稿里不再对引用做 80 字截断')
+  // 注释组件已接回（live-entry-76 起），构建产物必须真的打包它。
+  const builtAnnotations = await fs.readFile(path.join(ROOT, 'client.js'), 'utf8')
+  check(builtAnnotations.includes('/api/annotations') && builtAnnotations.includes('annotations-focus'),
+    '构建产物打包了注释客户端（/api/annotations + annotations-focus 挂载点都在）')
+  const anchorOk = anClientText.includes('data-annotations-badges') && anClientText.includes('function syncBadges')
+  check(anchorOk, '正文带编号角标（data-annotations-badges 层 + syncBadges 定位）')
+  check(anClientText.includes("host.appendChild(badgeLayerNode)") && anClientText.includes('position:fixed;left:0;top:0;width:0;height:0'),
+    '角标层挂在 body 上、fixed 定位（不依赖会话容器的 position/overflow）')
+  check(anClientText.includes("'data-annotations-dock'") && anClientText.includes('[data-conversation-region=\"composer\"]'),
+    '裁剪下边界取注释栏/输入框顶边（角标不侵入这两块）')
+  check(anClientText.includes('function clippingRect') && anClientText.includes("oy !== 'visible'"),
+    '按真实裁剪祖先（第一个非 visible 的 overflow）裁剪，不依赖固定属性名')
+  check(anClientText.includes('document.elementFromPoint') && anClientText.includes('chat.contains(hit)'),
+    '用 elementFromPoint 检测被会话标题盖住的角标（sticky 覆盖层靠坐标判不出来）')
+  check(anClientText.includes('裁剪 ') && anClientText.includes('badgeClipFound'),
+    '注释栏标题显示「裁剪 有/无」，裁剪容器是否命中一眼可见')
+  check(anClientText.includes('badgeMid >= clip.top'),
+    '角标按会话正文的可视矩形裁剪（文本滚出容器时角标一起消失）')
+  check(anClientText.includes('function scheduleBadges') && anClientText.includes('requestAnimationFrame'),
+    '滚动时用 rAF 合并、只挪角标位置（Range 已缓存，不重新定位文本）')
+  check(anClientText.includes('定位 ') && anClientText.includes('badgeMissed'),
+    '注释栏标题显示「定位 N/M」，定位失败一眼可见')
+  check(anClientText.includes("new ClipboardEvent('paste'"),
+    '插入草稿走 paste 事件（Lexical 把换行转成段落）')
+  check(anClientText.includes('requestAnimationFrame') && anClientText.includes('function invalidateIndex'),
+    '划词走下一帧（rAF）且全文索引带缓存失效')
+  check(anClientText.includes('function composerTop') && anClientText.includes('limit - 8'),
+    '划词浮层不越过输入框（矩形按 composer 顶边夹住）')
+  check(anClientText.includes('new ResizeObserver') && anClientText.includes('setDockMax'),
+    '注释栏高度跟随输入框（ResizeObserver + 动态 maxHeight，粘图后不被顶没）')
+} catch (e) {
+  fail('注释 Host 用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+} finally {
+  for (const [name, value] of savedEnv) setEnv(name, value)
+}
+
+// ── [4.8] 客户端插槽注册必须防崩：单个 register 抛错不能把整个 bundle 顶掉 ──
+// 背景：DSH 的 slots.inject 会把 callback 里的异常转成异步重抛（queueMicrotask），
+// 一处注册失败就会让整个客户端插件加载失败 → 侧边栏「工具集」入口连同所有面板一起消失。
+{
+  const savedLoader = globalThis.window.__ModuleLoader__
+  const savedFetch = globalThis.fetch
+  const savedWarn = console.warn
+  try {
+    const warnings = []
+    console.warn = (...args) => { warnings.push(args.map(String).join(' ')) }
+    globalThis.fetch = () => Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true, items: [], total: 0, nextIndex: 1, limits: {} }),
+    })
+    let captured = null
+    globalThis.window = Object.assign({}, globalThis.window, {
+      __ModuleLoader__: { load(m) { captured = m } },
+    })
+    await import(pathToFileURL(path.join(ROOT, 'components', 'annotations', 'client.js')).href + '?guard')
+    const mod = captured.factory((name) => {
+      if (name === 'react') return React
+      throw new Error('未知依赖 ' + name)
+    })
+
+    // 正常情况：四个插槽都注册上（会话跟踪 / 注释栏 / 浮层 / 工具集分页）
+    const ok = []
+    mod.apply({
+      effect(fn) { fn(); return () => {} },
+      get: () => undefined,
+      slots: { inject(key, cb) { cb() }, register(meta) { ok.push(meta.id ?? meta.key); return () => {} } },
+    })
+    check(ok.includes('annotations-focus') && ok.includes('annotations-dock')
+      && ok.includes('annotations-overlay') && ok.includes('annotations'),
+      '注释客户端正常注册四个挂载点（分别对应会话跟踪 / 输入框上方注释栏 / 浮层 / 工具集分页）')
+
+    // 异常情况：register 全抛错，apply 仍不抛（不能连累其它组件）
+    let threw = null
+    try {
+      mod.apply({
+        effect(fn) { fn(); return () => {} },
+        get: () => undefined,
+        slots: { inject(key, cb) { cb() }, register() { throw new Error('register boom') } },
+      })
+    } catch (error) {
+      threw = error
+    }
+    check(threw === null, 'slots.register 抛错时注释客户端的 apply 不抛错（不会连带其它面板一起失效）')
+    check(warnings.some((line) => line.includes('注册插槽')), '注册失败只 warn，不抛')
+    const guardText = await fs.readFile(path.join(ROOT, 'components', 'annotations', 'client.js'), 'utf8')
+    check(guardText.includes('const safeInject = (key, options, component) =>') && guardText.includes('warnSlot'),
+      '源码保留 safeInject 包装（防止以后改回裸 slots.inject）')
+  } catch (e) {
+    fail('注释客户端防崩用例异常 → ' + (e && e.stack ? e.stack.split('\n')[0] : String(e)))
+  } finally {
+    globalThis.window.__ModuleLoader__ = savedLoader
+    globalThis.fetch = savedFetch
+    console.warn = savedWarn
+  }
 }
 
 await fs.rm(TMP_ROOT, { recursive: true, force: true }).catch(() => {})

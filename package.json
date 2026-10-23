@@ -41,12 +41,13 @@
   "exports": {
     ".": "./index.js",
     "./image-gen": "./components/image-gen/host.js",
+    "./token-usage": "./components/token-usage/host.js",
     "./model-test": "./components/model-test/host.js",
     "./notifications": "./components/notifications/host.js",
-    "./token-usage": "./components/token-usage/host.js",
     "./mcp": "./components/mcp/host.js",
     "./skill": "./components/skill/host.js",
     "./clipboard": "./components/clipboard/host.js",
+    "./annotations": "./components/annotations/host.js",
     "./toolkit": "./components/toolkit/host.js",
     "./client": "./client.js",
     "./package.json": "./package.json"

@@ -2,7 +2,7 @@
 
 [简体中文](./README.md) | **English**
 
-A DSH desktop (DeepSeek Harness App) bundle that packs seven independent concerns into one package, and folds six of the panels behind a
+A DSH desktop (DeepSeek Harness App) bundle that packs eight independent concerns into one package, and folds seven of the panels behind a
 single "Toolkit" sidebar entry.
 
 | Component | Panel | Agent tool | In one line |
@@ -14,10 +14,11 @@ single "Toolkit" sidebar entry.
 | **mcp** | Toolkit → MCP | — | List / add / edit / delete / enable / probe the MCP servers in the profile's `cordis.patch.yml` |
 | **skill** | Toolkit → Skill | — | Browse, edit, create, delete and toggle skills across six scan roots |
 | **clipboard** | Toolkit → Clipboard | — | Turns very long pasted text into a file and leaves a single `@"path"` reference in the composer |
-| **toolkit** | Toolkit (order 48) | — | Collects the six panels above into one shell, plus a built-in read-only Settings tab |
+| **annotations** | Toolkit → Annotations (plus two in-conversation mounts) | — | Select text in a conversation to annotate it; the note becomes a `[注释 N]` block in the composer (each annotation on its own paragraph: `[注释 N] lines 12–18 "full quote": note`, whitespace collapsed, never truncated); saved notes collapse into「注释 N」chips — hover for the full quote and note, click to edit again |
+| **toolkit** | Toolkit (order 48) | — | Collects the seven panels above into one shell, plus a built-in read-only Settings tab |
 
 Each business component can be enabled on its own: panel keys (`image-gen` / `token-usage` / `model-test` / `notifications` /
-`mcp` / `skill` / `clipboard`) and route prefixes differ. The Toolkit is a shell: the client UI owns the sidebar entry and the tab switch, while the Host side
+`mcp` / `skill` / `clipboard` / `annotations`) and route prefixes differ. The Toolkit is a shell: the client UI owns the sidebar entry and the tab switch, while the Host side
 has one read-only settings route.
 
 > **Design principle: no vendor lock-in.** The plugin ships no vendor models, no default endpoint, no private gateway —
@@ -70,7 +71,7 @@ DSH desktop **0.2.1+** with a profile (by default under `~/.dsh/profiles/<profil
 "dependencies": { "dsh-toolkit": "link:/absolute/path/to/dsh-toolkit" }
 ```
 
-> ⚠️ `remove_bundle` deletes **both** declarations above from the profile's `package.json`. Add them back before reinstalling,
+> 🟡 `remove_bundle` deletes **both** declarations above from the profile's `package.json`. Add them back before reinstalling,
 > otherwise the package manager looks for the `link:` package in the registry and fails.
 
 ---
@@ -109,7 +110,12 @@ See: [功能案-模型测试](./docs/功能案-模型测试.md)
 
 Subscribes to 16 event types (session finished, approval needed, model failure, sub-agent outcome, …). Alerts go through the
 **OS notification center** only (they persist and click back into the session); nothing pops up inside the app. The panel is
-history plus per-scenario switches. Unread state and dedupe counters live in `notifications/queue.json` and survive restarts.
+history plus per-scenario switches, colour-coded per item
+(success / awaiting approval / awaiting answer / failure). OS notifications cannot be colour-coded, so each title
+carries an icon for the same four classes: 🟢 success · 🟠 awaiting approval · 🔵 awaiting answer · 🔴 failure · 🟡 warning.
+A finished turn raises an alert within 1.5 s (incremental heartbeat); success alerts for the same session merge into one
+per minute, and are skipped while you are looking at that session (approvals, questions and failures still alert).
+Unread state and dedupe counters live in `notifications/queue.json` and survive restarts.
 
 See: [功能案-通知](./docs/功能案-通知.md)
 
@@ -143,10 +149,23 @@ total size and only ever touches its own date folders).
 
 See: [功能案-剪贴板](./docs/功能案-剪贴板.md)
 
+### Conversation annotations (annotations)
+
+Reading a long conversation, pointing at one sentence used to cost a paragraph of prose. This component turns the
+reference into a selection: highlight text in the conversation body and the moment you release the mouse the selection
+gets a preview highlight plus a floating button carrying the next number (`＋ 注释 N`); clicking it opens an editable
+entry in the note bar above the composer (no popover), which collapses to one line once saved. Saving keeps the
+highlight, puts a blue numbered badge at the end of the selection, and appends an annotation block to the composer draft for the model
+(one line per annotation, full quoted text, whitespace collapsed; line positions are shown only in the annotation bar); deleting that note removes the highlight and the badge. Sending clears the notes and the numbering
+restarts at `注释 1` (nothing is archived). Notes live per session under `$DSH_HOME/dsh-toolkit/annotations/`; when the quoted text has changed the note
+is marked "quote changed" instead of being drawn in the wrong place.
+
+See: [功能案-对话注释](./docs/功能案-对话注释.md)
+
 ### Toolkit shell (toolkit)
 
-The sidebar carries a single "Toolkit" entry; inside, tabs switch between Image generation / Model test / Notifications /
-MCP / Skill / Clipboard / Settings. A tab you leave is unmounted (unsaved forms reset). Settings is a built-in read-only page showing
+The sidebar carries a single "Toolkit" entry; inside, tabs switch between Image generation / Clipboard / Model test /
+Notifications / MCP / Skill / Annotations / Settings. A tab you leave is unmounted (unsaved forms reset). Settings is a built-in read-only page showing
 where each component's data lands, whether it exists, how large it is and when it last changed.
 
 See: [功能案-工具集壳](./docs/功能案-工具集壳.md)

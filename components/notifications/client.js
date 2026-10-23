@@ -17,12 +17,45 @@ window.__ModuleLoader__.load({
 //
 // 点击通知会跳回对应会话（`uiWorkspace.openSession`），并关闭这条通知。
 // 找不到会话（会话已删、Host 没给 id）时退化成「只关闭」。
-const CSS = '.nf-root{position:relative;display:flex;flex-direction:column;gap:14px;padding:18px 20px 12px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;min-height:0;background:var(--dsw-alias-bg-layer-0)}.nf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;flex:none}.nf-title{margin:0;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}.nf-sub{margin-top:6px;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:640px}.nf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nf-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;line-height:1.6;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.nf-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.nf-btn:disabled{opacity:.5;cursor:default}.nf-btn-on{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}.nf-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:600}.nf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:none}.nf-stat{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;padding:10px 12px}.nf-stat-label{font-size:11px;color:var(--dsw-alias-label-secondary)}.nf-stat-value{font-size:19px;font-weight:650;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;margin-top:3px}.nf-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;overflow:hidden;flex:none}.nf-card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}.nf-list{display:flex;flex-direction:column}.nf-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;min-width:0}.nf-item+.nf-item{border-top:1px solid var(--dsw-alias-border-l2)}.nf-item:hover{background:var(--dsw-alias-interactive-bg-hover)}.nf-item-read{opacity:.62}.nf-dot{flex:none;width:7px;height:7px;margin-top:6px;border-radius:50%;background:var(--dsw-alias-label-tertiary)}.nf-lv-info{background:var(--dsw-alias-state-success-primary)}.nf-lv-warning{background:var(--dsw-alias-state-warn-primary)}.nf-lv-error{background:var(--dsw-alias-state-error-primary)}.nf-lv-action{background:var(--dsw-alias-brand-primary)}.nf-item-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}.nf-item-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);min-width:0}.nf-item-body{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.nf-item-detail{font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}.nf-item-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-tertiary);flex-wrap:wrap}.nf-tag{flex:none;display:inline-flex;align-items:center;padding:0 6px;font-size:10px;line-height:1.7;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-weight:600}.nf-warn{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:9px;border:1px solid var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-bg-layer-1);font-size:12px;line-height:1.6;color:var(--dsw-alias-label-primary);flex:none}.nf-jump{flex:none;padding:0 6px;font-size:10px;line-height:1.7;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}.nf-jump:hover{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}.nf-count{flex:none;display:inline-flex;align-items:center;padding:0 5px;font-size:10px;line-height:1.7;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}.nf-kind-row{display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px}.nf-kind-row+.nf-kind-row{border-top:1px solid var(--dsw-alias-border-l2)}.nf-kind-label{color:var(--dsw-alias-label-primary);flex:none;min-width:96px}.nf-kind-hint{color:var(--dsw-alias-label-tertiary);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nf-empty{padding:14px;font-size:12px;color:var(--dsw-alias-label-secondary)}.nf-msg{margin-top:2px;font-size:12px;line-height:1.5;word-break:break-all}.nf-msg-ok{color:var(--dsw-alias-state-success-primary)}.nf-msg-err{color:var(--dsw-alias-state-error-primary)}.nf-path{font-size:11px;line-height:1.6;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;flex:none}.nf-entry-dot{display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:700;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2)}.nf-switch{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:19px;padding:0;border-radius:999px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);position:relative}.nf-switch::after{content:"";width:13px;height:13px;border-radius:50%;background:var(--dsw-alias-label-tertiary);transition:transform .16s ease}.nf-switch-on{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary)}.nf-switch-on::after{transform:translateX(7px);background:var(--dsw-alias-bg-base)}'
+const CSS = '.nf-root{position:relative;display:flex;flex-direction:column;gap:14px;padding:18px 20px 12px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;min-height:0;background:var(--dsw-alias-bg-layer-0)}.nf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;flex:none}.nf-title{margin:0;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}.nf-sub{margin-top:6px;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:640px}.nf-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.nf-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;line-height:1.6;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.nf-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.nf-btn:disabled{opacity:.5;cursor:default}.nf-btn-on{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}.nf-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);font-weight:600}.nf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:none}.nf-stat{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;padding:10px 12px}.nf-stat-label{font-size:11px;color:var(--dsw-alias-label-secondary)}.nf-stat-value{font-size:19px;font-weight:650;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;margin-top:3px}.nf-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:9px;overflow:hidden;flex:none}.nf-card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}.nf-list{display:flex;flex-direction:column}.nf-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;min-width:0}.nf-item+.nf-item{border-top:1px solid var(--dsw-alias-border-l2)}.nf-item:hover{background:var(--dsw-alias-interactive-bg-hover)}.nf-item-read{opacity:.62}.nf-dot{flex:none;width:7px;height:7px;margin-top:6px;border-radius:50%;background:var(--dsw-alias-label-tertiary)}.nf-kind-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-label-tertiary)}.nf-lv-info{background:var(--dsw-alias-state-success-primary)}.nf-lv-warning{background:var(--dsw-alias-state-warn-primary)}.nf-lv-error{background:var(--dsw-alias-state-error-primary)}.nf-lv-action{background:var(--dsw-alias-brand-primary)}.nf-lv-success{background:var(--dsw-alias-state-success-primary)}.nf-lv-approval{background:var(--dsw-alias-state-warn-primary)}.nf-lv-question{background:var(--dsw-alias-brand-primary)}.nf-tone-label{font-weight:600}.nf-tone-success{color:var(--dsw-alias-state-success-primary)}.nf-tone-approval{color:var(--dsw-alias-state-warn-primary)}.nf-tone-failure{color:var(--dsw-alias-state-error-primary)}.nf-tone-question{color:var(--dsw-alias-brand-primary)}.nf-tone-warning{color:var(--dsw-alias-state-warn-primary)}.nf-item-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}.nf-item-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);min-width:0}.nf-item-body{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.nf-item-detail{font-size:11px;line-height:1.5;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}.nf-item-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-tertiary);flex-wrap:wrap}.nf-tag{flex:none;display:inline-flex;align-items:center;padding:0 6px;font-size:10px;line-height:1.7;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-weight:600}.nf-warn{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:9px;border:1px solid var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-bg-layer-1);font-size:12px;line-height:1.6;color:var(--dsw-alias-label-primary);flex:none}.nf-jump{flex:none;padding:0 6px;font-size:10px;line-height:1.7;border-radius:6px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary)}.nf-jump:hover{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}.nf-count{flex:none;display:inline-flex;align-items:center;padding:0 5px;font-size:10px;line-height:1.7;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}.nf-kind-row{display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px}.nf-kind-row+.nf-kind-row{border-top:1px solid var(--dsw-alias-border-l2)}.nf-kind-icon{flex:none;font-size:12px;line-height:1}.nf-kind-label{color:var(--dsw-alias-label-primary);flex:none;min-width:96px}.nf-kind-hint{color:var(--dsw-alias-label-tertiary);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nf-empty{padding:14px;font-size:12px;color:var(--dsw-alias-label-secondary)}.nf-msg{margin-top:2px;font-size:12px;line-height:1.5;word-break:break-all}.nf-msg-ok{color:var(--dsw-alias-state-success-primary)}.nf-msg-err{color:var(--dsw-alias-state-error-primary)}.nf-path{font-size:11px;line-height:1.6;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;flex:none}.nf-entry-dot{display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:700;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2)}.nf-switch{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:19px;padding:0;border-radius:999px;cursor:pointer;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);position:relative}.nf-switch::after{content:"";width:13px;height:13px;border-radius:50%;background:var(--dsw-alias-label-tertiary);transition:transform .16s ease}.nf-switch-on{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary)}.nf-switch-on::after{transform:translateX(7px);background:var(--dsw-alias-bg-base)}'
 const PANEL_KEY = 'notifications'
-/** 面板轮询间隔，同时也是「拉取新通知去弹系统通知」的心跳。8 秒足够稀疏。 */
-const POLL_MS = 8000
+// 两档轮询，各管一件事：
+//   POLL_MS      弹通知的心跳。只问「有没有比 lastSeq 新的条目」（light=1 增量，
+//                响应通常几十字节），所以可以很密 —— 之前 8 秒一次拉全量，
+//                最坏要等到 8 秒后系统通知才出来，这就是「回调有点慢」的来源。
+//   FULL_POLL_MS 全量快照。列表、未读计数、配置都在里面，几百条上百 KB，
+//                保持原来的节奏即可。
+const POLL_MS = 1500
+const FULL_POLL_MS = 8000
+// 同一会话、同一场景的「成功」类通知，一分钟内只弹第一条，后面的只进面板。
+// 长任务连着跑好几轮时，「会话完成」会一条接一条地弹，吵得没法看。
+// 只合并 level === 'info'（会话完成 / 子智能体完成）；审批、提问、失败、警告
+// 一律不合并 —— 那些是需要用户真的动手或多看一眼的。
+const THROTTLE_MS = 60000
 const LEVEL_LABEL = { info: '信息', warning: '警告', error: '错误', action: '待处理' }
 const LEVEL_CLASS = { info: 'nf-lv-info', warning: 'nf-lv-warning', error: 'nf-lv-error', action: 'nf-lv-action' }
+// 面板要一眼分出「成功 / 待审批 / 待回答 / 失败」：level 只有 info/warning/error/action 四档，
+// 而 action 里同时装着审批和提问，所以按场景 id 再细分一层色调。只影响显示，Host 的推送策略不变。
+const KIND_TONE = {
+  'turn-completed': 'success',
+  'subagent-completed': 'success',
+  'approval-required': 'approval',
+  'plan-review': 'approval',
+  'question-required': 'question',
+}
+const TONE_LABEL = { success: '成功', approval: '待审批', failure: '失败', question: '待回答', warning: '警告', info: '信息' }
+// 系统通知标题前的圆点。Host 会在条目 / 场景上给 icon，但那个字段是后加的：
+// 宿主还没重启（跑旧入口）时条目里没有 icon，若只认 item.icon 就会退化成
+// 清一色「⚪」，看着像没分类。所以前端按同一套色调自己兜底。
+const TONE_ICON = { success: '🟢', approval: '🟠', question: '🔵', failure: '🔴', warning: '🟡', info: '⚪' }
+const TONE_CLASS = {
+  success: 'nf-lv-success',
+  approval: 'nf-lv-approval',
+  failure: 'nf-lv-error',
+  question: 'nf-lv-question',
+  warning: 'nf-lv-warning',
+  info: 'nf-lv-info',
+}
 const EMPTY_PAGE = { loading: true, data: null, error: null }
 const PERM_LABEL = { granted: '系统通知已开', denied: '系统通知被拒绝', default: '开启系统通知', unsupported: '此环境不支持系统通知' }
 /** Host 侧探测到的系统通知通道名。 */
@@ -51,6 +84,8 @@ return {
       return body
     }))
     const load = () => fetchJson('/api/notifications')
+    /** 轻量增量：只回「比 seq 新」的条目，心跳专用。 */
+    const loadLight = (seq) => fetchJson('/api/notifications?light=1&seq=' + encodeURIComponent(String(seq)))
     const act = (action, extra) => fetchJson('/api/notifications', {
       method: 'POST',
       body: JSON.stringify({ action, ...(extra === undefined ? {} : extra) }),
@@ -71,12 +106,21 @@ return {
       store.listeners.add(listener)
       return () => { store.listeners.delete(listener) }
     }
+    // 增量心跳的水位线：条目 id 形如 `n285`，只比其中的序号。
+    // -1 = 还没拿到全量快照，此时不发心跳（否则历史记录会被当成新通知）。
+    let lastSeq = -1
+    // 提示音开关在 config 里，只有全量快照带；心跳响应不带，这里缓存一份。
+    let soundOn = true
+    const soundOf = (config) => (config !== null && typeof config === 'object'
+      && config.native !== null && typeof config.native === 'object' && config.native.sound === false) ? false : true
     let requestSeq = 0
     function refresh() {
       const seq = ++requestSeq
       load().then((data) => {
         // 迟到的响应不能覆盖新数据，否则「刚标记已读」会被旧快照打回去。
         if (seq !== requestSeq) return
+        if (typeof data.seq === 'number' && data.seq > lastSeq) lastSeq = data.seq
+        soundOn = soundOf(data.config)
         publish({ loading: false, data, error: null })
       }, (cause) => {
         if (seq !== requestSeq) return
@@ -87,7 +131,10 @@ return {
     refresh()
     // `timer` 是硬依赖（在 inject 里声明），但应用加载早期它可能还没就位；
     // 没有定时器就退化成「只在面板打开时拉一次」，不能让整个插件起不来。
-    if (typeof ctx.interval === 'function') ctx.interval(refresh, POLL_MS)
+    if (typeof ctx.interval === 'function') {
+      ctx.interval(poll, POLL_MS)
+      ctx.interval(refresh, FULL_POLL_MS)
+    }
 
     // ── 系统通知 ────────────────────────────────────────────────
     const supported = () => typeof Notification !== 'undefined'
@@ -110,9 +157,16 @@ return {
       // 权限一律放行，requestPermission() 是异步的，等它 resolve 再弹会把启动
       // 头几秒的通知全丢掉。
       if (Notification.permission === 'denied') return false
-      // 标题 = 谁（工作区 / 会话），正文第一行 = 为什么（场景），第二行才是明细。
+      // 标题 = 图标 + 谁（工作区 / 会话），正文第一行 = 为什么（场景），第二行才是明细。
       // 通知中心里能一眼看到的只有标题和一两行正文，顺序反了就没用了。
-      const title = typeof item.title === 'string' && item.title !== '' ? item.title : 'DSH'
+      // 系统通知不允许自定义颜色，四类只能在标题前带一个图标（Host 在条目上给了 icon）：
+      // 🟢 成功 / 🟠 待审批 / 🔵 待回答 / 🔴 失败 / 🟡 警告。
+      // Host 没给（旧入口跑着 / 字段还没落地）时按场景色调自己推，别退化成白点。
+      const icon = (typeof item.icon === 'string' && item.icon !== ''
+        ? item.icon
+        : TONE_ICON[toneOf(item)] || '⚪') + ' '
+      const base = typeof item.title === 'string' && item.title !== '' ? item.title : 'DSH'
+      const title = icon + base
       const status = typeof item.status === 'string' && item.status !== '' ? item.status : ''
       const detail = typeof item.body === 'string' && item.body !== '' ? item.body : ''
       const body = status === '' ? detail : detail === '' ? status : status + ' · ' + detail
@@ -172,30 +226,109 @@ return {
     // 新通知 → 弹系统通知。放在 apply 里而不是某个 React 组件里：面板没被打开
     // 时也必须能提醒（React 组件只有被渲染时才存在）。
     const notified = { ids: [] }
+    // 同一会话同一场景的节流表：key = 场景 + 会话，value = 上次弹的时间。
+    const throttled = new Map()
+    // 用户此刻正在看的会话。由 session 作用域的 FocusTracker 回报，空串表示
+    // 「不知道 / 不在任何会话里」。
+    const view = { sessionId: '' }
+    const windowFocused = () => {
+      if (typeof document !== 'undefined' && typeof document.hasFocus === 'function') {
+        try { return document.hasFocus() === true } catch { return true }
+      }
+      return true
+    }
+    const infoLevel = (item) => item !== null && typeof item === 'object' && item.level === 'info'
+    const sessionOf = (item) => (item !== null && typeof item === 'object' && typeof item.sessionId === 'string' ? item.sessionId : '')
+    /**
+     * 该不该为这条通知打扰用户。两个理由成立就静默：
+     *   1. 你正盯着这个会话（窗口有焦点、会话 id 一致）—— 结果就在眼前，再弹
+     *      一次系统通知纯属噪音。审批 / 提问 / 失败不受影响：那些要人动手。
+     *   2. 同一会话同一场景的「成功」类通知，一分钟内已经弹过一次。
+     * 同一条通知（同 id）不重复弹由 deliver() 的 notified 表保证。
+     */
+    function quiet(item) {
+      if (!infoLevel(item)) return false
+      const sessionId = sessionOf(item)
+      if (sessionId !== '' && sessionId === view.sessionId && windowFocused()) return true
+      const key = String(item.kind) + '\u0000' + sessionId
+      const now = Date.now()
+      const last = throttled.get(key)
+      if (typeof last === 'number' && now - last < THROTTLE_MS) return true
+      throttled.set(key, now)
+      if (throttled.size > 200) {
+        for (const [entry, at] of throttled) if (now - at >= THROTTLE_MS) throttled.delete(entry)
+      }
+      return false
+    }
+    /** 唯一的弹通知入口：去重 → 静默判定 → 真的弹。 */
+    function deliver(item) {
+      if (item === null || typeof item !== 'object') return false
+      if (item.read === true) return false
+      const id = typeof item.id === 'string' ? item.id : ''
+      if (id === '') return false
+      if (notified.ids.indexOf(id) !== -1) return false
+      notified.ids.push(id)
+      if (notified.ids.length > 300) notified.ids.splice(0, notified.ids.length - 300)
+      if (quiet(item)) return false
+      return notify(item, soundOn)
+    }
+    /** items 倒序（最新在前），反过来按时间顺序弹，否则多条同时到达时会乱序。 */
+    function deliverAll(items) {
+      for (let index = items.length - 1; index >= 0; index -= 1) deliver(items[index])
+    }
     let notifyReady = false
     const watch = (page) => {
       const data = page !== null && page.data !== null && typeof page.data === 'object' ? page.data : null
       if (data === null || !Array.isArray(data.items)) return
-      const sound = !(data.config !== null && typeof data.config === 'object' &&
-        data.config.native !== null && typeof data.config.native === 'object' &&
-        data.config.native.sound === false)
       if (notifyReady === false) {
-        // 首帧拿到的是历史记录（可能几百条），全部记成「已提醒」，绝不补弹。
+        // 首帧拿到的是历史记录（可能几百条），全部记成「已提醒」并埋进节流表，
+        // 绝不补弹。
         notifyReady = true
-        for (const item of data.items) notified.ids.push(item.id)
+        for (const item of data.items) {
+          if (typeof item.id === 'string') notified.ids.push(item.id)
+          if (infoLevel(item)) throttled.set(String(item.kind) + '\u0000' + sessionOf(item), Number(item.createdAt) || 0)
+        }
+        if (notified.ids.length > 300) notified.ids.splice(0, notified.ids.length - 300)
         return
       }
-      // items 是倒序（最新在前），反过来按时间顺序弹，否则多条同时到达时会乱序。
-      for (let index = data.items.length - 1; index >= 0; index -= 1) {
-        const item = data.items[index]
-        if (item.read === true) continue
-        if (notified.ids.indexOf(item.id) !== -1) continue
-        notified.ids.push(item.id)
-        notify(item, sound)
-      }
-      if (notified.ids.length > 300) notified.ids.splice(0, notified.ids.length - 300)
+      deliverAll(data.items)
     }
     subscribe(watch)
+    /**
+     * 心跳：只问「有没有比 lastSeq 新的条目」，有新条目才弹。轻量响应通常几十
+     * 字节，所以可以 1.5 秒一次 —— 会话一跑完，最多 1.5 秒系统通知就出来。
+     */
+    let polling = false
+    function poll() {
+      if (polling || lastSeq < 0) return
+      polling = true
+      loadLight(lastSeq).then((data) => {
+        polling = false
+        if (typeof data.seq === 'number' && data.seq > lastSeq) lastSeq = data.seq
+        const items = Array.isArray(data.items) ? data.items : []
+        if (items.length === 0) return
+        if (notifyReady === false) { notifyReady = true; return }
+        deliverAll(items)
+        refresh()
+      }, () => { polling = false })
+    }
+    // 当前会话怎么看：conversation.composer.dock 是 session 作用域的槽位，标准
+    // props 里有 sessionId，且只在当前打开的会话里渲染。注册一个返回 null 的
+    // 空组件，切会话时它跟着挂载 / 卸载，就能一直知道「现在在看哪个会话」。
+    function FocusTracker(props) {
+      const sessionId = props !== null && typeof props === 'object' && typeof props.sessionId === 'string' ? props.sessionId : ''
+      React.useEffect(() => {
+        view.sessionId = sessionId
+        return () => {
+          if (view.sessionId === sessionId) view.sessionId = ''
+        }
+      }, [sessionId])
+      return null
+    }
+    slots.inject('conversation.composer.dock', () => slots.register(
+      { name: 'conversation.composer.dock', id: 'notifications-focus', order: 900 },
+      FocusTracker,
+    ))
     // 权限：Electron 主进程对非 media 权限一律放行，浏览器里会弹一次系统询问。
     // 失败无所谓——面板上有「开启系统通知」按钮可以手动再要一次。
     if (supported() && Notification.permission === 'default') {
@@ -209,7 +342,18 @@ return {
       if (diff < 86400000) return Math.round(diff / 3600000) + ' 小时前'
       return Math.round(diff / 86400000) + ' 天前'
     }
-    const levelLabel = (level) => (LEVEL_LABEL[level] !== undefined ? LEVEL_LABEL[level] : String(level))
+    // 条目用 .kind，设置页的场景目录用 .id —— 两种形状都接。
+    const toneOf = (entry) => {
+      const key = typeof entry.kind === 'string' ? entry.kind : (typeof entry.id === 'string' ? entry.id : '')
+      if (KIND_TONE[key] !== undefined) return KIND_TONE[key]
+      const level = typeof entry.level === 'string' ? entry.level : 'info'
+      if (level === 'error') return 'failure'
+      if (level === 'warning') return 'warning'
+      return level === 'action' ? 'approval' : 'info'
+    }
+    const toneLabel = (tone) => (TONE_LABEL[tone] !== undefined ? TONE_LABEL[tone] : String(tone))
+    const toneClass = (tone) => 'nf-dot ' + (TONE_CLASS[tone] !== undefined ? TONE_CLASS[tone] : 'nf-lv-info')
+    const toneDotClass = (tone) => 'nf-kind-dot ' + (TONE_CLASS[tone] !== undefined ? TONE_CLASS[tone] : 'nf-lv-info')
     const nativeLabel = (native) => {
       const channel = typeof native.channel === 'string' ? native.channel : 'none'
       const text = NATIVE_LABEL[channel] !== undefined ? NATIVE_LABEL[channel] : channel
@@ -218,7 +362,6 @@ return {
       }
       return text + (typeof native.sent === 'number' && native.sent > 0 ? '，已投递 ' + native.sent + ' 条' : '')
     }
-    const levelClass = (level) => 'nf-dot ' + (LEVEL_CLASS[level] !== undefined ? LEVEL_CLASS[level] : 'nf-lv-info')
     function panelGlyph(size) {
       const edge = typeof size === 'number' && size > 0 ? size : 16
       return React.createElement('span', { className: 'nf-entry-dot', style: { width: edge + 'px', height: edge + 'px' } }, 'N')
@@ -305,13 +448,15 @@ return {
 
       // 一行里排的是「谁 → 为什么 → 多少次」：标题（工作区 / 会话）→ 场景徽章 → 去重计数。
       // 顺序是用户指定的：先看清是哪个会话，再看它因为什么冒出来。
-      const itemNode = (item) => React.createElement('div', {
-        key: item.id,
-        className: 'nf-item' + (item.read === true ? ' nf-item-read' : ''),
-        onClick: () => markRead(item),
-        title: item.read === true ? '已读' : '点击标记为已读',
-      },
-        React.createElement('span', { className: levelClass(item.level) }),
+      const itemNode = (item) => {
+        const tone = toneOf(item)
+        return React.createElement('div', {
+          key: item.id,
+          className: 'nf-item' + (item.read === true ? ' nf-item-read' : ''),
+          onClick: () => markRead(item),
+          title: item.read === true ? '已读' : '点击标记为已读',
+        },
+        React.createElement('span', { className: toneClass(tone), title: toneLabel(tone) }),
         React.createElement('div', { className: 'nf-item-main' },
           React.createElement('div', { className: 'nf-item-title' },
             item.title,
@@ -322,7 +467,7 @@ return {
           React.createElement('div', { className: 'nf-item-body' }, item.body),
           item.detail !== undefined && item.detail !== '' ? React.createElement('div', { className: 'nf-item-detail' }, item.detail) : null,
           React.createElement('div', { className: 'nf-item-meta' },
-            React.createElement('span', null, levelLabel(item.level)),
+            React.createElement('span', { className: 'nf-tone-label nf-tone-' + tone }, toneLabel(tone)),
             // 整条的点击是「标记已读」，所以跳会话必须另给一个按钮——不然 meta 上写
             // 「点击可跳到该会话」就是空头支票（自检里也有用例盯着这个按钮）。
             item.sessionId !== undefined && item.sessionId !== ''
@@ -338,15 +483,24 @@ return {
               }, '跳到会话')
               : null,
             React.createElement('span', null, fmtAgo(item.createdAt)))))
-      const kindNode = (kind) => React.createElement('div', { key: kind.id, className: 'nf-kind-row' },
-        React.createElement('span', { className: 'nf-kind-label' }, kind.label),
-        React.createElement('span', { className: 'nf-kind-hint', title: kind.hint }, kind.hint),
-        React.createElement('button', {
-          type: 'button',
-          className: 'nf-switch' + (kind.enabled === true ? ' nf-switch-on' : ''),
-          onClick: () => toggleKind(kind),
-          title: kind.enabled === true ? '已启用，点击关闭' : '已关闭，点击启用',
-        }))
+      }
+      const kindNode = (kind) => {
+        const tone = toneOf(kind)
+        return React.createElement('div', { key: kind.id, className: 'nf-kind-row' },
+          React.createElement('span', { className: toneDotClass(tone), title: toneLabel(tone) }),
+          // 同一个图标也出现在系统通知标题前，这里是它的「图例」。
+          // Host 没给 icon（跑着旧入口）时按色调兜底，免得整页清一色白点。
+          React.createElement('span', { className: 'nf-kind-icon' },
+            typeof kind.icon === 'string' && kind.icon !== '' ? kind.icon : TONE_ICON[tone] || '\u26AA'),
+          React.createElement('span', { className: 'nf-kind-label' }, kind.label),
+          React.createElement('span', { className: 'nf-kind-hint', title: kind.hint }, kind.hint),
+          React.createElement('button', {
+            type: 'button',
+            className: 'nf-switch' + (kind.enabled === true ? ' nf-switch-on' : ''),
+            onClick: () => toggleKind(kind),
+            title: kind.enabled === true ? '已启用，点击关闭' : '已关闭，点击启用',
+          }))
+      }
 
       return React.createElement('div', { className: 'nf-root' },
         React.createElement('div', { className: 'nf-head' },

@@ -33,7 +33,8 @@ import {
 } from '../image-gen/paths.js?v=44'
 import { paramsFile, presetsFile } from '../model-test/presets.js?v=12'
 import { clipboardDir, configFile as clipConfigFile, indexPath as clipIndexFile } from '../clipboard/paths.js?v=3'
-import { configFile as notifyConfigFile, queueFile as notifyQueueFile } from '../notifications/host.js?v=10'
+import { annotationsDir, indexFile as annotationsIndexFile } from '../annotations/paths.js?v=2'
+import { configFile as notifyConfigFile, queueFile as notifyQueueFile } from '../notifications/host.js?v=13'
 
 export const name = 'toolkit'
 export const inject = ['connection', 'timer']
@@ -114,6 +115,13 @@ function storageOverview() {
       label: '剪贴板',
       dir: clipboardDir(),
       files: [entry('条目索引', clipIndexFile()), entry('配置', clipConfigFile())],
+    },
+    {
+      id: 'annotations',
+      label: '注释',
+      dir: annotationsDir(),
+      files: [entry('会话汇总', annotationsIndexFile())],
+      note: '每个会话一个 <sessionId>.json，本项是跨会话汇总索引。',
     },
     {
       id: 'mcp',

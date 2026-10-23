@@ -15,4 +15,4 @@ node_modules/
 # 换入口时把下面这条例外改成新的 live-entry-N.js —— tools/check-client.mjs 会核对
 # 它和 cordis.patch.yml 指向的是同一个文件，忘了改会直接报错。
 live-entry-*.js
-!live-entry-70.js
+!live-entry-76.js
