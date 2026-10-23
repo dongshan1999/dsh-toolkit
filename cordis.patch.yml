@@ -65,7 +65,7 @@
 #      （重新申请权限 + 打开系统设置）；新增 POST open-settings 动作，Host 走
 #      `open x-apple.systempreferences:com.apple.Notifications-Settings.extension`（Linux 是
 #      gnome-control-center notifications），失败返回 502 notifications/settings-unavailable。
-#      在 mac 上只有把提醒样式从「横幅」改成「提醒」，通知才会停在屏幕上等人点掉——这一步只能用户改。
+#      在 macOS 上只有把提醒样式从「横幅」改成「提醒」，通知才会停在屏幕上等人点掉——这一步只能用户改。
 #   4) 面板精简：只剩「测试系统通知」一个测试按钮（删掉「发条测试」与「测试兜底通道」），
 #      新增「系统通知设置」按钮；列表项标题后紧跟场景徽章 + ×N 去重计数。
 #   notifications host.js 升到 ?v=4；image-gen ?v=39、token-usage host.js ?v=25、model-test host.js ?v=9 不变。
